@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 import pyglet
-from pyglet.window import key, event
+from pyglet.window import key
 from pyglet.image import ImageData
 
 class ImageViewer(pyglet.window.Window):
@@ -186,6 +186,17 @@ class ImageViewer(pyglet.window.Window):
                 # Work out the new x and y of the image bottom left keeping the image static at the mouse position
                 self.xPos = self.xPos + xMouseImagePos - xScaledMouseImagePos
                 self.yPos = self.yPos + yMouseImagePos - yScaledMouseImagePos
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        # Get the hand cursor
+        cursor = self.get_system_mouse_cursor(self.CURSOR_HAND)
+
+        # Set the hand as the current cursor
+        self.set_mouse_cursor(cursor)
+
+    def on_mouse_release(self, x, y, button, modifiers):
+        # Calling set mouse cursor with no parameter resets it to the default
+        self.set_mouse_cursor()
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         # Update the x and y positions by the drag amounts
