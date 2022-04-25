@@ -23,6 +23,12 @@ class ImageViewer(pyglet.window.Window):
         self.yPos = 0
         self.currentImageWidth = 0
         self.currentImageHeight = 0
+        self.xStartDrag = 0
+        self.yStartDrag = 0
+        self.rectangle = None
+
+        # Create a batch drawing context
+        self.batch = pyglet.graphics.Batch()
 
         # Check for a file on the command line
         if len(argv) > 1:
@@ -140,6 +146,10 @@ class ImageViewer(pyglet.window.Window):
 
             # Draw the new image
             self.image.blit(self.xPos, self.yPos, width=self.currentImageWidth, height=self.currentImageHeight)
+        
+        if self.rectangle:
+            # If the rectangle exists, draw it as part of a batch
+            self.batch.draw()
 
     def on_key_press(self, symbol, modifiers):
         if symbol == key.RIGHT:
@@ -161,6 +171,12 @@ class ImageViewer(pyglet.window.Window):
         elif symbol == key.ESCAPE:
             # Quit the application
             pyglet.app.exit()
+        else:
+            # If this is not one of the above keys return without redrawing the image
+            return
+
+        # Clear the rectangle
+        self.rectangle = None
 
         # Load the new image
         self._LoadImage()
@@ -187,9 +203,23 @@ class ImageViewer(pyglet.window.Window):
                 self.xPos = self.xPos + xMouseImagePos - xScaledMouseImagePos
                 self.yPos = self.yPos + yMouseImagePos - yScaledMouseImagePos
 
+        # Clear the rectangle
+        self.rectangle = None
+
     def on_mouse_press(self, x, y, button, modifiers):
-        # Get the hand cursor
-        cursor = self.get_system_mouse_cursor(self.CURSOR_HAND)
+        # Clear the rectangle
+        self.rectangle = None
+
+        if modifiers & key.MOD_COMMAND:
+            # Log the starting point of the drag
+            self.xStartDrag = x
+            self.yStartDrag = y
+
+            # Get the crosshair cursor
+            cursor = self.get_system_mouse_cursor(self.CURSOR_CROSSHAIR)
+        else:
+            # Get the hand cursor
+            cursor = self.get_system_mouse_cursor(self.CURSOR_HAND)
 
         # Set the hand as the current cursor
         self.set_mouse_cursor(cursor)
@@ -199,9 +229,16 @@ class ImageViewer(pyglet.window.Window):
         self.set_mouse_cursor()
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
-        # Update the x and y positions by the drag amounts
-        self.xPos = self.xPos + dx
-        self.yPos = self.yPos + dy
+        if modifiers & key.MOD_COMMAND:
+            # Draw the rectangle
+            self.rectangle = pyglet.shapes.Rectangle(self.xStartDrag, self.yStartDrag, x - self.xStartDrag, y - self.yStartDrag, (128, 128, 128), batch=self.batch)
+
+            # Set the opacity to 50%
+            self.rectangle.opacity = 128
+        else:
+            # Update the x and y positions by the drag amounts
+            self.xPos = self.xPos + dx
+            self.yPos = self.yPos + dy
 
 def main() -> None:
     imageViewer = ImageViewer(sys.argv)
