@@ -189,7 +189,7 @@ class ImageViewer(pyglet.window.Window):
 
     def on_mouse_press(self, x, y, button, modifiers):
         # Get the hand cursor
-        cursor = self.get_system_mouse_cursor(self.CURSOR_CROSSHAIR)
+        cursor = self.get_system_mouse_cursor(self.CURSOR_HAND)
 
         # Set the hand as the current cursor
         self.set_mouse_cursor(cursor)
