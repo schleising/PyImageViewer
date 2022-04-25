@@ -87,7 +87,10 @@ class ImageViewer(pyglet.window.Window):
         ]
 
         # Return the list of images Paths
-        return [image for image in imagePath.iterdir() if image.suffix.lower() in extensions]
+        return sorted([image for image in imagePath.iterdir() if image.suffix.lower() in extensions], key=self._GetPathLowerCase)
+
+    def _GetPathLowerCase(self, path: Path) -> str:
+        return path.name.lower()
 
     def _LoadImage(self) -> None:
         # Load the new image
