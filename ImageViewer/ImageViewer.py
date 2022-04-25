@@ -183,5 +183,10 @@ class ImageViewer(pyglet.window.Window):
                 self.xPos = self.xPos + xMouseImagePos - xScaledMouseImagePos
                 self.yPos = self.yPos + yMouseImagePos - yScaledMouseImagePos
 
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+        # Update the x and y positions by the drag amounts
+        self.xPos = self.xPos + dx
+        self.yPos = self.yPos + dy
+
 if __name__ == '__main__':
     imageViewer = ImageViewer(sys.argv)
