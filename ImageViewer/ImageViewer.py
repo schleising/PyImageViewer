@@ -4,7 +4,7 @@ from typing import Optional
 
 import pyglet
 from pyglet.window import key
-from pyglet.image import ImageData
+from pyglet.sprite import Sprite
 
 class ImageViewer(pyglet.window.Window):
     def __init__(self, argv: list[str]) -> None:
@@ -15,17 +15,17 @@ class ImageViewer(pyglet.window.Window):
         # event_logger = event.WindowEventLogger()
         # self.push_handlers(event_logger)
 
-        # State that there is not yet an image
-        self.image: Optional[ImageData] = None
+        # Sprite containing the image
+        self.sprite: Optional[Sprite] = None
 
         # Set safe defaults
-        self.xPos = 0
-        self.yPos = 0
-        self.currentImageWidth = 0
-        self.currentImageHeight = 0
         self.xStartDrag = 0
         self.yStartDrag = 0
         self.rectangle = None
+
+        # Setup ordered groups to ensure shapes are drawn on top of the image
+        self.background = pyglet.graphics.OrderedGroup(0)
+        self.foreground = pyglet.graphics.OrderedGroup(1)
 
         # Create a batch drawing context
         self.batch = pyglet.graphics.Batch()
@@ -100,55 +100,68 @@ class ImageViewer(pyglet.window.Window):
         return path.name.lower()
 
     def _LoadImage(self) -> None:
+        if self.sprite:
+            self.sprite.delete()
+            self.sprite = None
+
+        if self.rectangle:
+            self.rectangle.delete()
+            self.rectangle = None
+
         # Load the new image
-        self.image = pyglet.image.load(self.images[self.currentImageIndex])
+        image = pyglet.image.load(self.images[self.currentImageIndex])
 
         # If either the image width or height is larger than the screen
-        if self.image.width > self.screenWidth or self.image.height > self.screenHeight:
+        if image.width > self.screenWidth or image.height > self.screenHeight:
             # Squeeze the height and width
-            self.currentImageWidth = min(self.image.width, self.screenWidth)
-            self.currentImageHeight = min(self.image.height, self.screenHeight)
+            currentImageWidth = min(image.width, self.screenWidth)
+            currentImageHeight = min(image.height, self.screenHeight)
 
             # Work out whether the height or width has been squeezed the most
-            if self.currentImageWidth / self.image.width < self.currentImageHeight / self.image.height:
+            if currentImageWidth / image.width < currentImageHeight / image.height:
                 # Width squeezed most, so squeeze the height to maintain aspect ratio
-                self.currentImageHeight = self.currentImageHeight * (self.currentImageWidth / self.image.width)
-            elif self.currentImageHeight / self.image.height < self.currentImageWidth / self.image.width:
+                currentImageHeight = currentImageHeight * (currentImageWidth / image.width)
+            elif currentImageHeight / image.height < currentImageWidth / image.width:
                 # Height squeezed most, so squeeze the width to maintain aspect ratio
-                self.currentImageWidth = self.currentImageWidth * (self.currentImageHeight / self.image.height)
+                currentImageWidth = currentImageWidth * (currentImageHeight / image.height)
         # If the image width and height are smaller than the screen, stretch the image to fit the screen
-        elif self.image.width < self.screenWidth and self.image.height < self.screenHeight:
+        elif image.width < self.screenWidth and image.height < self.screenHeight:
             # Set the image height and width to match the screen dimensions
-            self.currentImageHeight = self.screenHeight
-            self.currentImageWidth = self.screenWidth
+            currentImageHeight = self.screenHeight
+            currentImageWidth = self.screenWidth
 
             # Work out whether the height or width has been stretched the least
-            if self.currentImageWidth / self.image.width < self.currentImageHeight / self.image.height:
+            if currentImageWidth / image.width < currentImageHeight / image.height:
                 # Width stretched least, so stretch the height to maintain aspect ratio
-                self.currentImageHeight = self.image.height * (self.currentImageWidth / self.image.width)
-            elif self.currentImageHeight / self.image.height < self.currentImageWidth / self.image.width:
+                currentImageHeight = image.height * (currentImageWidth / image.width)
+            elif currentImageHeight / image.height < currentImageWidth / image.width:
                 # Height stretched least, so stretch the width to maintain aspect ratio
-                self.currentImageWidth = self.image.width * (self.currentImageHeight / self.image.height)
+                currentImageWidth = image.width * (currentImageHeight / image.height)
         else:
             # Image dimensions exactly match the screen dimensions, so do nothing
-            self.currentImageWidth = self.image.width
-            self.currentImageHeight = self.image.height
+            currentImageWidth = image.width
+            currentImageHeight = image.height
 
         # Calculate the x and y position needed to draw the image in the centre of the screen
-        self.xPos = self.screenWidth / 2 - self.currentImageWidth / 2
-        self.yPos = self.screenHeight / 2 - self.currentImageHeight / 2
+        xPos = self.screenWidth / 2 - currentImageWidth / 2
+        yPos = self.screenHeight / 2 - currentImageHeight / 2
+
+        # Calculate the scaling factor from the ratio of heights
+        scalingFactor = currentImageHeight / image.height
+
+        # Create a sprite containing the image at the calculated x, y position
+        self.sprite = pyglet.sprite.Sprite(img=image, x=xPos, y=yPos, batch=self.batch, group=self.background)
+
+        # Scale the sprite
+        self.sprite.scale = scalingFactor
 
     def on_draw(self):
         # Check that image is not None
-        if self.image:
+        if self.sprite:
             # Clear the existing screen
             self.clear()
 
-            # Draw the new image
-            self.image.blit(self.xPos, self.yPos, width=self.currentImageWidth, height=self.currentImageHeight)
-        
-        if self.rectangle:
-            # If the rectangle exists, draw it as part of a batch
+            # Draw the batch
             self.batch.draw()
 
     def on_key_press(self, symbol, modifiers):
@@ -176,39 +189,44 @@ class ImageViewer(pyglet.window.Window):
             return
 
         # Clear the rectangle
-        self.rectangle = None
+        if self.rectangle:
+            self.rectangle.delete()
+            self.rectangle = None
 
         # Load the new image
         self._LoadImage()
 
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
-        if self.image:
+        if self.sprite:
             if scroll_y > 0.2 or scroll_y < -0.2:
                 # Scale the scroll value
                 scaleFactor = 1.1 if scroll_y < 0 else 1 / 1.1
 
-                # Scale the width and height
-                self.currentImageHeight = self.currentImageHeight * scaleFactor
-                self.currentImageWidth = self.currentImageWidth * scaleFactor
-
                 # Work out how far the mouse is from the image bottom left
-                xMouseImagePos = x - self.xPos
-                yMouseImagePos = y - self.yPos
+                xMouseImagePos = x - self.sprite.x
+                yMouseImagePos = y - self.sprite.y
 
                 # Scale this distance by the zoom factor
                 xScaledMouseImagePos = xMouseImagePos * scaleFactor
                 yScaledMouseImagePos = yMouseImagePos * scaleFactor
 
                 # Work out the new x and y of the image bottom left keeping the image static at the mouse position
-                self.xPos = self.xPos + xMouseImagePos - xScaledMouseImagePos
-                self.yPos = self.yPos + yMouseImagePos - yScaledMouseImagePos
+                self.sprite.x = self.sprite.x + xMouseImagePos - xScaledMouseImagePos
+                self.sprite.y = self.sprite.y + yMouseImagePos - yScaledMouseImagePos
+
+                # Rescale the sprite
+                self.sprite.scale = self.sprite.scale * scaleFactor
 
         # Clear the rectangle
-        self.rectangle = None
+        if self.rectangle:
+            self.rectangle.delete()
+            self.rectangle = None
 
     def on_mouse_press(self, x, y, button, modifiers):
         # Clear the rectangle
-        self.rectangle = None
+        if self.rectangle:
+            self.rectangle.delete()
+            self.rectangle = None
 
         if modifiers & key.MOD_COMMAND:
             # Log the starting point of the drag
@@ -229,19 +247,30 @@ class ImageViewer(pyglet.window.Window):
         self.set_mouse_cursor()
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
-        if modifiers & key.MOD_COMMAND:
-            # Draw the rectangle
-            self.rectangle = pyglet.shapes.Rectangle(self.xStartDrag, self.yStartDrag, x - self.xStartDrag, y - self.yStartDrag, (128, 128, 128), batch=self.batch)
+        if self.sprite:
+            if modifiers & key.MOD_COMMAND:
+                # Draw the rectangle
+                self.rectangle = pyglet.shapes.Rectangle(
+                    self.xStartDrag, 
+                    self.yStartDrag, 
+                    x - self.xStartDrag, 
+                    y - self.yStartDrag, 
+                    (128, 0, 0), 
+                    batch=self.batch,
+                    group=self.foreground
+                )
 
-            # Set the opacity to 50%
-            self.rectangle.opacity = 128
-        else:
-            # Update the x and y positions by the drag amounts
-            self.xPos = self.xPos + dx
-            self.yPos = self.yPos + dy
+                # Set the opacity to 50%
+                self.rectangle.opacity = 128
+            else:
+                # Update the x and y positions by the drag amounts
+                self.sprite.x = self.sprite.x + dx
+                self.sprite.y = self.sprite.y + dy
 
-            # Clear the rectangle
-            self.rectangle = None
+                # Clear the rectangle
+                if self.rectangle:
+                    self.rectangle.delete()
+                    self.rectangle = None
 
 def main() -> None:
     imageViewer = ImageViewer(sys.argv)
