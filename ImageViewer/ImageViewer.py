@@ -165,17 +165,23 @@ class ImageViewer(pyglet.window.Window):
         if self.image:
             if scroll_y > 0.2 or scroll_y < -0.2:
                 # Scale the scroll value
-                # scaleFactor = scroll_x / max(self.image.height, self.image.width)
                 scaleFactor = 1.1 if scroll_y > 0 else 1 / 1.1
-                print(scaleFactor)
 
                 # Scale the width and height
                 self.currentImageHeight = self.currentImageHeight * scaleFactor
                 self.currentImageWidth = self.currentImageWidth * scaleFactor
 
-            # Calculate the x and y position needed to draw the image in the centre of the screen
-            self.xPos = self.screenWidth / 2 - self.currentImageWidth / 2
-            self.yPos = self.screenHeight / 2 - self.currentImageHeight / 2
+                # Work out how far the mouse is from the image bottom left
+                xMouseImagePos = x - self.xPos
+                yMouseImagePos = y - self.yPos
+
+                # Scale this distance by the zoom factor
+                xScaledMouseImagePos = xMouseImagePos * scaleFactor
+                yScaledMouseImagePos = yMouseImagePos * scaleFactor
+
+                # Work out the new x and y of the image bottom left keeping the image static at the mouse position
+                self.xPos = self.xPos + xMouseImagePos - xScaledMouseImagePos
+                self.yPos = self.yPos + yMouseImagePos - yScaledMouseImagePos
 
 if __name__ == '__main__':
     imageViewer = ImageViewer(sys.argv)
