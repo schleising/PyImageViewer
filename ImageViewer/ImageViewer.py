@@ -240,6 +240,9 @@ class ImageViewer(pyglet.window.Window):
             self.xPos = self.xPos + dx
             self.yPos = self.yPos + dy
 
+            # Clear the rectangle
+            self.rectangle = None
+
 def main() -> None:
     imageViewer = ImageViewer(sys.argv)
 
