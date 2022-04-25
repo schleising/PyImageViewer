@@ -12,8 +12,8 @@ class ImageViewer(pyglet.window.Window):
         super(ImageViewer, self).__init__()
 
         # Add an event logger
-        event_logger = event.WindowEventLogger()
-        self.push_handlers(event_logger)
+        # event_logger = event.WindowEventLogger()
+        # self.push_handlers(event_logger)
 
         # State that there is not yet an image
         self.image: Optional[ImageData] = None
@@ -161,6 +161,21 @@ class ImageViewer(pyglet.window.Window):
         # Load the new image
         self._LoadImage()
 
+    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+        if self.image:
+            if scroll_y > 0.2 or scroll_y < -0.2:
+                # Scale the scroll value
+                # scaleFactor = scroll_x / max(self.image.height, self.image.width)
+                scaleFactor = 1.1 if scroll_y > 0 else 1 / 1.1
+                print(scaleFactor)
+
+                # Scale the width and height
+                self.currentImageHeight = self.currentImageHeight * scaleFactor
+                self.currentImageWidth = self.currentImageWidth * scaleFactor
+
+            # Calculate the x and y position needed to draw the image in the centre of the screen
+            self.xPos = self.screenWidth / 2 - self.currentImageWidth / 2
+            self.yPos = self.screenHeight / 2 - self.currentImageHeight / 2
 
 if __name__ == '__main__':
     imageViewer = ImageViewer(sys.argv)
