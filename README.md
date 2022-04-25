@@ -1,1 +1,1 @@
-# pyglet-test
+# PyImageViewer

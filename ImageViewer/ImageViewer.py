@@ -203,5 +203,8 @@ class ImageViewer(pyglet.window.Window):
         self.xPos = self.xPos + dx
         self.yPos = self.yPos + dy
 
-if __name__ == '__main__':
+def main() -> None:
     imageViewer = ImageViewer(sys.argv)
+
+if __name__ == '__main__':
+    main()
