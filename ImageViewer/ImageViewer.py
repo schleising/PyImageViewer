@@ -165,7 +165,7 @@ class ImageViewer(pyglet.window.Window):
         if self.image:
             if scroll_y > 0.2 or scroll_y < -0.2:
                 # Scale the scroll value
-                scaleFactor = 1.1 if scroll_y > 0 else 1 / 1.1
+                scaleFactor = 1.1 if scroll_y < 0 else 1 / 1.1
 
                 # Scale the width and height
                 self.currentImageHeight = self.currentImageHeight * scaleFactor
