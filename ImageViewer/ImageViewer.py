@@ -100,11 +100,28 @@ class ImageViewer(pyglet.window.Window):
         # Return the lower case version of the filename
         return path.name.lower()
 
+    def HideMouse(self, dt: float = 0.0) -> None:
+        # Hide the mouse after the timeout expires
+        self.set_mouse_visible(False)
+
+    def ShowMouse(self, autoHide: bool) -> None:
+        # Unschedule the mouse hide callback
+        pyglet.clock.unschedule(self.HideMouse)
+
+        # Set the mouse to be visible
+        self.set_mouse_visible(True)
+
+        # If we want to hide the mouse again after a timeout, schedule the callback
+        if autoHide:
+            pyglet.clock.schedule_once(self.HideMouse, 0.5)
+
     def _LoadImage(self) -> None:
+        # Remove the existing sprite if it exists
         if self.sprite:
             self.sprite.delete()
             self.sprite = None
 
+        # Remove the existing rectangle if it exists
         if self.rectangle:
             self.rectangle.delete()
             self.rectangle = None
@@ -128,6 +145,9 @@ class ImageViewer(pyglet.window.Window):
 
         # Scale the sprite
         self.sprite.scale = scalingFactor
+
+        # Hide the mouse immediately
+        self.HideMouse()
 
     def on_draw(self):
         # Check that image is not None
@@ -170,7 +190,14 @@ class ImageViewer(pyglet.window.Window):
         # Load the new image
         self._LoadImage()
 
+    def on_mouse_motion(self, x, y, dx, dy):
+        # Show the mouse when it moves, autohiding afterwards
+        self.ShowMouse(True)
+
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+        # Show the mouse when scrolling, autohiding afterwards
+        self.ShowMouse(True)
+
         if self.sprite:
             if scroll_y > 0.2 or scroll_y < -0.2:
                 # Scale the scroll value
@@ -197,6 +224,9 @@ class ImageViewer(pyglet.window.Window):
             self.rectangle = None
 
     def on_mouse_press(self, x, y, button, modifiers):
+        # Show the mouse while pressed, do not autohide
+        self.ShowMouse(False)
+
         # Clear the rectangle
         if self.rectangle:
             self.rectangle.delete()
@@ -217,6 +247,9 @@ class ImageViewer(pyglet.window.Window):
         self.set_mouse_cursor(cursor)
 
     def on_mouse_release(self, x, y, button, modifiers):
+        # Show the mouse when released, autohiding after the timeout
+        self.ShowMouse(True)
+
         # Calling set mouse cursor with no parameter resets it to the default
         self.set_mouse_cursor()
 
