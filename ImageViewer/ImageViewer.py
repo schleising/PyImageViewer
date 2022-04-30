@@ -1,10 +1,12 @@
+from datetime import datetime
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 import pyglet
 from pyglet.window import key
 from pyglet.sprite import Sprite
+from pyglet.image import ImageData, ImageDataRegion
 
 class ImageViewer(pyglet.window.Window):
     def __init__(self, argv: list[str]) -> None:
@@ -15,13 +17,17 @@ class ImageViewer(pyglet.window.Window):
         # event_logger = event.WindowEventLogger()
         # self.push_handlers(event_logger)
 
+        # The current image
+        self.image: Optional[ImageData] = None
+
         # Sprite containing the image
         self.sprite: Optional[Sprite] = None
 
         # Set safe defaults
         self.xStartDrag = 0
         self.yStartDrag = 0
-        self.rectangle = None
+        self.rectangle: Optional[pyglet.shapes.Rectangle] = None
+        self.imageCanBeSaved: bool = False
 
         # Setup ordered groups to ensure shapes are drawn on top of the image
         self.background = pyglet.graphics.OrderedGroup(0)
@@ -93,67 +99,141 @@ class ImageViewer(pyglet.window.Window):
         ]
 
         # Return the list of images Paths, sorted alphabetically (case insensitive)
-        return sorted([image for image in imagePath.iterdir() if image.suffix.lower() in extensions], key=self._GetPathLowerCase)
+        return sorted([image for image in imagePath.iterdir() if image.suffix.lower() in extensions], key=lambda x: x.name.lower())
 
-    def _GetPathLowerCase(self, path: Path) -> str:
-        # Return the lower case version of the filename
-        return path.name.lower()
+    def HideMouse(self, dt: float = 0.0) -> None:
+        # Hide the mouse after the timeout expires
+        self.set_mouse_visible(False)
 
-    def _LoadImage(self) -> None:
+    def ShowMouse(self, autoHide: bool) -> None:
+        # Unschedule the mouse hide callback
+        pyglet.clock.unschedule(self.HideMouse)
+
+        # Set the mouse to be visible
+        self.set_mouse_visible(True)
+
+        # If we want to hide the mouse again after a timeout, schedule the callback
+        if autoHide:
+            pyglet.clock.schedule_once(self.HideMouse, 0.5)
+
+    def _LoadImage(self, imageRegion: Optional[ImageDataRegion] = None) -> None:
+        # Remove the existing sprite if it exists
         if self.sprite:
             self.sprite.delete()
             self.sprite = None
 
+        # Remove the existing rectangle if it exists
         if self.rectangle:
             self.rectangle.delete()
             self.rectangle = None
 
-        # Load the new image
-        image = pyglet.image.load(self.images[self.currentImageIndex])
-
-        # If either the image width or height is larger than the screen
-        if image.width > self.screenWidth or image.height > self.screenHeight:
-            # Squeeze the height and width
-            currentImageWidth = min(image.width, self.screenWidth)
-            currentImageHeight = min(image.height, self.screenHeight)
-
-            # Work out whether the height or width has been squeezed the most
-            if currentImageWidth / image.width < currentImageHeight / image.height:
-                # Width squeezed most, so squeeze the height to maintain aspect ratio
-                currentImageHeight = currentImageHeight * (currentImageWidth / image.width)
-            elif currentImageHeight / image.height < currentImageWidth / image.width:
-                # Height squeezed most, so squeeze the width to maintain aspect ratio
-                currentImageWidth = currentImageWidth * (currentImageHeight / image.height)
-        # If the image width and height are smaller than the screen, stretch the image to fit the screen
-        elif image.width < self.screenWidth and image.height < self.screenHeight:
-            # Set the image height and width to match the screen dimensions
-            currentImageHeight = self.screenHeight
-            currentImageWidth = self.screenWidth
-
-            # Work out whether the height or width has been stretched the least
-            if currentImageWidth / image.width < currentImageHeight / image.height:
-                # Width stretched least, so stretch the height to maintain aspect ratio
-                currentImageHeight = image.height * (currentImageWidth / image.width)
-            elif currentImageHeight / image.height < currentImageWidth / image.width:
-                # Height stretched least, so stretch the width to maintain aspect ratio
-                currentImageWidth = image.width * (currentImageHeight / image.height)
+        if imageRegion:
+            self.image = imageRegion
+            self.imageCanBeSaved = True
         else:
-            # Image dimensions exactly match the screen dimensions, so do nothing
-            currentImageWidth = image.width
-            currentImageHeight = image.height
+            # Load the new image
+            self.image = pyglet.image.load(self.images[self.currentImageIndex])
+            self.imageCanBeSaved = False
+
+        # Work out how much to scale each axis to fit into the screen
+        xScale = self.screenWidth / self.image.width
+        yScale = self.screenHeight / self.image.height
+
+        # Both axes need to be scaled by the smallest number
+        scalingFactor = min(xScale, yScale)
 
         # Calculate the x and y position needed to draw the image in the centre of the screen
-        xPos = self.screenWidth / 2 - currentImageWidth / 2
-        yPos = self.screenHeight / 2 - currentImageHeight / 2
-
-        # Calculate the scaling factor from the ratio of heights
-        scalingFactor = currentImageHeight / image.height
+        xPos = self.screenWidth / 2 - (scalingFactor * self.image.width / 2)
+        yPos = self.screenHeight / 2 - (scalingFactor * self.image.height / 2)
 
         # Create a sprite containing the image at the calculated x, y position
-        self.sprite = pyglet.sprite.Sprite(img=image, x=xPos, y=yPos, batch=self.batch, group=self.background)
+        self.sprite = pyglet.sprite.Sprite(img=self.image, x=xPos, y=yPos, batch=self.batch, group=self.background)
 
         # Scale the sprite
         self.sprite.scale = scalingFactor
+
+        # Hide the mouse immediately
+        self.HideMouse()
+
+    def _ConstrainRect(self, x: int, y: int) -> Tuple[int, int]:
+        # Initialise x and y to 0
+        xPos = 0
+        yPos = 0
+
+        if self.sprite:
+            # Constrain x to the sprite dimensions
+            if x < self.sprite.x:
+                xPos = self.sprite.x
+            elif x >= self.sprite.x + self.sprite.width:
+                xPos = self.sprite.x + self.sprite.width
+            else:
+                xPos = x
+
+            # Constrain y to the sprite dimensions
+            if y < self.sprite.y:
+                yPos = self.sprite.y
+            elif y >= self.sprite.y + self.sprite.height:
+                yPos = self.sprite.y + self.sprite.height
+            else:
+                yPos = y
+
+        # Return the constrained x and y positions
+        return xPos, yPos
+
+    def _CropImage(self) -> None:
+        # If the rectangle, sprite and image are valid
+        if self.rectangle and self.sprite and self.image:
+            # Get the screen x and y coordinates of the rectangle
+            screenX, screenY = self.rectangle.position
+
+            # Get the screen width and height of the rectangle
+            screenWidth = self.rectangle.width
+            screenHeight = self.rectangle.height
+
+            # Ensure that the x and y of the rectangle are bottom left
+            if screenWidth < 0:
+                screenX = screenX + screenWidth
+
+            if screenHeight < 0:
+                screenY = screenY + screenHeight
+
+            # Ensure that the width and height of the rectangle are positive
+            screenWidth = abs(screenWidth)
+            screenHeight = abs(screenHeight)
+
+            # Get the screen x and y of the sprite origin
+            spriteOriginX, spriteOriginY = self.sprite.position
+
+            # Find out how far into the image we are in left and right in screen pixels
+            scaledImageX = screenX - spriteOriginX
+            scaledImageY = screenY - spriteOriginY
+
+            # Get the sprite scaling factor
+            scalingFactor = self.sprite.scale
+
+            # Get the x, y, width and height in image pixels
+            imageX = int(scaledImageX / scalingFactor)
+            imageY = int(scaledImageY / scalingFactor)
+            imageWidth = int(screenWidth / scalingFactor)
+            imageHeight = int(screenHeight / scalingFactor)
+
+            # Get this region of the image
+            imageRegion = self.image.get_region(imageX, imageY, imageWidth, imageHeight)
+
+            # Display the cropped image
+            self._LoadImage(imageRegion)
+
+    def _SaveImage(self) -> None:
+        # If the image can be saved (i.e., it is modified)
+        if self.image and self.imageCanBeSaved:
+            # Get the filename of the original image
+            originalFilename = self.images[self.currentImageIndex]
+
+            # Construct a new filename using .png as the suffix
+            newFilename = originalFilename.parent / f'{originalFilename.stem}_Cropped {datetime.now()}.png'
+
+            # Save the new file
+            self.image.save(newFilename)
 
     def on_draw(self):
         # Check that image is not None
@@ -181,6 +261,16 @@ class ImageViewer(pyglet.window.Window):
             if self.currentImageIndex < 0:
                 # Set to the max index value if not
                 self.currentImageIndex = self.maxImageIndex
+        elif symbol == key.C:
+            # Crop the image
+            self._CropImage()
+            return
+        elif symbol == key.S:
+            # If the rectangle has been drawn
+            if self.imageCanBeSaved:
+                # Crop the image
+                self._SaveImage()
+            return
         elif symbol == key.ESCAPE:
             # Quit the application
             pyglet.app.exit()
@@ -196,7 +286,14 @@ class ImageViewer(pyglet.window.Window):
         # Load the new image
         self._LoadImage()
 
+    def on_mouse_motion(self, x, y, dx, dy):
+        # Show the mouse when it moves, autohiding afterwards
+        self.ShowMouse(True)
+
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+        # Show the mouse when scrolling, autohiding afterwards
+        self.ShowMouse(True)
+
         if self.sprite:
             if scroll_y > 0.2 or scroll_y < -0.2:
                 # Scale the scroll value
@@ -223,6 +320,9 @@ class ImageViewer(pyglet.window.Window):
             self.rectangle = None
 
     def on_mouse_press(self, x, y, button, modifiers):
+        # Show the mouse while pressed, do not autohide
+        self.ShowMouse(False)
+
         # Clear the rectangle
         if self.rectangle:
             self.rectangle.delete()
@@ -230,8 +330,7 @@ class ImageViewer(pyglet.window.Window):
 
         if modifiers & key.MOD_COMMAND:
             # Log the starting point of the drag
-            self.xStartDrag = x
-            self.yStartDrag = y
+            self.xStartDrag, self.yStartDrag = self._ConstrainRect(x, y)
 
             # Get the crosshair cursor
             cursor = self.get_system_mouse_cursor(self.CURSOR_CROSSHAIR)
@@ -243,19 +342,25 @@ class ImageViewer(pyglet.window.Window):
         self.set_mouse_cursor(cursor)
 
     def on_mouse_release(self, x, y, button, modifiers):
+        # Show the mouse when released, autohiding after the timeout
+        self.ShowMouse(True)
+
         # Calling set mouse cursor with no parameter resets it to the default
         self.set_mouse_cursor()
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         if self.sprite:
             if modifiers & key.MOD_COMMAND:
+                # Get the x and y position constrained to the image
+                xPos, yPos = self._ConstrainRect(x, y)
+
                 # Draw the rectangle
                 self.rectangle = pyglet.shapes.Rectangle(
                     self.xStartDrag, 
                     self.yStartDrag, 
-                    x - self.xStartDrag, 
-                    y - self.yStartDrag, 
-                    (128, 0, 0), 
+                    xPos - self.xStartDrag, 
+                    yPos - self.yStartDrag, 
+                    (30, 144, 255), 
                     batch=self.batch,
                     group=self.foreground
                 )
