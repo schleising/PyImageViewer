@@ -28,6 +28,9 @@ class ImageViewer(pyglet.window.Window):
         self.yStartDrag = 0
         self.rectangle: Optional[pyglet.shapes.Rectangle] = None
         self.imageCanBeSaved: bool = False
+        self.leftCommandHeld = False
+        self.mouseX = 0
+        self.mouseY = 0
 
         # Setup ordered groups to ensure shapes are drawn on top of the image
         self.background = pyglet.graphics.OrderedGroup(0)
@@ -155,7 +158,7 @@ class ImageViewer(pyglet.window.Window):
         # Hide the mouse immediately
         self.HideMouse()
 
-    def _ConstrainRect(self, x: int, y: int) -> Tuple[int, int]:
+    def _ConstrainToSprite(self, x: int, y: int) -> Tuple[int, int]:
         # Initialise x and y to 0
         xPos = 0
         yPos = 0
@@ -271,6 +274,28 @@ class ImageViewer(pyglet.window.Window):
                 # Crop the image
                 self._SaveImage()
             return
+        elif symbol == key.LCOMMAND:
+            # Clear the rectangle
+            if self.rectangle:
+                self.rectangle.delete()
+                self.rectangle = None
+
+            # Log that the left command key is held down
+            self.leftCommandHeld = True
+
+            # Log the starting point of the rectangle
+            self.xStartDrag, self.yStartDrag = self._ConstrainToSprite(self.mouseX, self.mouseY)
+
+            # Get the crosshair cursor
+            cursor = self.get_system_mouse_cursor(self.CURSOR_CROSSHAIR)
+
+            # Set the crosshair as the current cursor
+            self.set_mouse_cursor(cursor)
+
+            # Show the mouse without autohiding
+            self.ShowMouse(False)
+
+            return
         elif symbol == key.ESCAPE:
             # Quit the application
             pyglet.app.exit()
@@ -286,9 +311,45 @@ class ImageViewer(pyglet.window.Window):
         # Load the new image
         self._LoadImage()
 
+    def on_key_release(self, symbol, modifiers):
+        if symbol == key.LCOMMAND:
+            # Clear the left command key held status
+            self.leftCommandHeld = False
+
+            # Calling set mouse cursor with no parameter resets it to the default
+            self.set_mouse_cursor()
+
+            # Show the mouse when it moves, autohiding afterwards
+            self.ShowMouse(True)
+
     def on_mouse_motion(self, x, y, dx, dy):
-        # Show the mouse when it moves, autohiding afterwards
-        self.ShowMouse(True)
+        # Store the current mouse x and y position
+        self.mouseX = x
+        self.mouseY = y
+
+        if self.leftCommandHeld:
+            # Get the x and y position constrained to the image
+            xPos, yPos = self._ConstrainToSprite(x, y)
+
+            # Draw the rectangle
+            self.rectangle = pyglet.shapes.Rectangle(
+                self.xStartDrag, 
+                self.yStartDrag, 
+                xPos - self.xStartDrag, 
+                yPos - self.yStartDrag, 
+                (30, 144, 255), 
+                batch=self.batch,
+                group=self.foreground
+            )
+
+            # Set the opacity to 50%
+            self.rectangle.opacity = 128
+
+            # Show the mouse when it moves, not autohiding
+            self.ShowMouse(False)
+        else:
+            # Show the mouse when it moves, autohiding afterwards
+            self.ShowMouse(True)
 
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
         # Show the mouse when scrolling, autohiding afterwards
@@ -323,20 +384,16 @@ class ImageViewer(pyglet.window.Window):
         # Show the mouse while pressed, do not autohide
         self.ShowMouse(False)
 
+        # Clear the left command key held status
+        self.leftCommandHeld = False
+
         # Clear the rectangle
         if self.rectangle:
             self.rectangle.delete()
             self.rectangle = None
 
-        if modifiers & key.MOD_COMMAND:
-            # Log the starting point of the drag
-            self.xStartDrag, self.yStartDrag = self._ConstrainRect(x, y)
-
-            # Get the crosshair cursor
-            cursor = self.get_system_mouse_cursor(self.CURSOR_CROSSHAIR)
-        else:
-            # Get the hand cursor
-            cursor = self.get_system_mouse_cursor(self.CURSOR_HAND)
+        # Get the hand cursor
+        cursor = self.get_system_mouse_cursor(self.CURSOR_HAND)
 
         # Set the hand as the current cursor
         self.set_mouse_cursor(cursor)
@@ -349,33 +406,19 @@ class ImageViewer(pyglet.window.Window):
         self.set_mouse_cursor()
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+        # Store the current mouse x and y position
+        self.mouseX = x
+        self.mouseY = y
+
         if self.sprite:
-            if modifiers & key.MOD_COMMAND:
-                # Get the x and y position constrained to the image
-                xPos, yPos = self._ConstrainRect(x, y)
+            # Update the x and y positions by the drag amounts
+            self.sprite.x = self.sprite.x + dx
+            self.sprite.y = self.sprite.y + dy
 
-                # Draw the rectangle
-                self.rectangle = pyglet.shapes.Rectangle(
-                    self.xStartDrag, 
-                    self.yStartDrag, 
-                    xPos - self.xStartDrag, 
-                    yPos - self.yStartDrag, 
-                    (30, 144, 255), 
-                    batch=self.batch,
-                    group=self.foreground
-                )
-
-                # Set the opacity to 50%
-                self.rectangle.opacity = 128
-            else:
-                # Update the x and y positions by the drag amounts
-                self.sprite.x = self.sprite.x + dx
-                self.sprite.y = self.sprite.y + dy
-
-                # Clear the rectangle
-                if self.rectangle:
-                    self.rectangle.delete()
-                    self.rectangle = None
+            # Clear the rectangle
+            if self.rectangle:
+                self.rectangle.delete()
+                self.rectangle = None
 
 def main() -> None:
     imageViewer = ImageViewer(sys.argv)
