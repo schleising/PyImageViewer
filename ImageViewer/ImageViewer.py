@@ -5,6 +5,7 @@ from typing import Optional
 import pyglet
 from pyglet.window import key
 from pyglet.sprite import Sprite
+from pyglet.image import ImageData
 
 class ImageViewer(pyglet.window.Window):
     def __init__(self, argv: list[str]) -> None:
@@ -109,45 +110,18 @@ class ImageViewer(pyglet.window.Window):
             self.rectangle = None
 
         # Load the new image
-        image = pyglet.image.load(self.images[self.currentImageIndex])
+        image: ImageData = pyglet.image.load(self.images[self.currentImageIndex])
 
-        # If either the image width or height is larger than the screen
-        if image.width > self.screenWidth or image.height > self.screenHeight:
-            # Squeeze the height and width
-            currentImageWidth = min(image.width, self.screenWidth)
-            currentImageHeight = min(image.height, self.screenHeight)
+        # Work out how much to scale each axis to fit into the screen
+        xScale = self.screenWidth / image.width
+        yScale = self.screenHeight / image.height
 
-            # Work out whether the height or width has been squeezed the most
-            if currentImageWidth / image.width < currentImageHeight / image.height:
-                # Width squeezed most, so squeeze the height to maintain aspect ratio
-                currentImageHeight = currentImageHeight * (currentImageWidth / image.width)
-            elif currentImageHeight / image.height < currentImageWidth / image.width:
-                # Height squeezed most, so squeeze the width to maintain aspect ratio
-                currentImageWidth = currentImageWidth * (currentImageHeight / image.height)
-        # If the image width and height are smaller than the screen, stretch the image to fit the screen
-        elif image.width < self.screenWidth and image.height < self.screenHeight:
-            # Set the image height and width to match the screen dimensions
-            currentImageHeight = self.screenHeight
-            currentImageWidth = self.screenWidth
-
-            # Work out whether the height or width has been stretched the least
-            if currentImageWidth / image.width < currentImageHeight / image.height:
-                # Width stretched least, so stretch the height to maintain aspect ratio
-                currentImageHeight = image.height * (currentImageWidth / image.width)
-            elif currentImageHeight / image.height < currentImageWidth / image.width:
-                # Height stretched least, so stretch the width to maintain aspect ratio
-                currentImageWidth = image.width * (currentImageHeight / image.height)
-        else:
-            # Image dimensions exactly match the screen dimensions, so do nothing
-            currentImageWidth = image.width
-            currentImageHeight = image.height
+        # Both axes need to be scaled by the smallest number
+        scalingFactor = min(xScale, yScale)
 
         # Calculate the x and y position needed to draw the image in the centre of the screen
-        xPos = self.screenWidth / 2 - currentImageWidth / 2
-        yPos = self.screenHeight / 2 - currentImageHeight / 2
-
-        # Calculate the scaling factor from the ratio of heights
-        scalingFactor = currentImageHeight / image.height
+        xPos = self.screenWidth / 2 - (scalingFactor * image.width / 2)
+        yPos = self.screenHeight / 2 - (scalingFactor * image.height / 2)
 
         # Create a sprite containing the image at the calculated x, y position
         self.sprite = pyglet.sprite.Sprite(img=image, x=xPos, y=yPos, batch=self.batch, group=self.background)
