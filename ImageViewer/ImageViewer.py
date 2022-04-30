@@ -262,7 +262,7 @@ class ImageViewer(pyglet.window.Window):
                     self.yStartDrag, 
                     x - self.xStartDrag, 
                     y - self.yStartDrag, 
-                    (128, 0, 0), 
+                    (30, 144, 255), 
                     batch=self.batch,
                     group=self.foreground
                 )
