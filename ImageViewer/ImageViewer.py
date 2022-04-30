@@ -94,11 +94,7 @@ class ImageViewer(pyglet.window.Window):
         ]
 
         # Return the list of images Paths, sorted alphabetically (case insensitive)
-        return sorted([image for image in imagePath.iterdir() if image.suffix.lower() in extensions], key=self._GetPathLowerCase)
-
-    def _GetPathLowerCase(self, path: Path) -> str:
-        # Return the lower case version of the filename
-        return path.name.lower()
+        return sorted([image for image in imagePath.iterdir() if image.suffix.lower() in extensions], key=lambda x: x.name.lower())
 
     def HideMouse(self, dt: float = 0.0) -> None:
         # Hide the mouse after the timeout expires
