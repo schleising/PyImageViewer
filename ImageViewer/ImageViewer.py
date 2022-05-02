@@ -39,10 +39,9 @@ class ImageViewer(pyglet.window.Window):
         self.leftCommandHeld = False
         self.mouseX = 0
         self.mouseY = 0
-        self.fps = 50
+        self.fps = 60
         self.targetXPos = 0
         self.transitionTime = 0.25
-        self.step = 0
         self.direction: Optional[Direction] = None
 
         # Setup ordered groups to ensure shapes are drawn on top of the image
@@ -172,15 +171,9 @@ class ImageViewer(pyglet.window.Window):
         if self.direction == Direction.Forward:
             # Work out the off screen x position for the new image to start
             xPos = xPos + self.screenWidth
-
-            # Work out the step size of the scroll
-            self.step = -self.screenWidth / (self.fps * self.transitionTime)
         elif self.direction == Direction.Back:
             # Work out the off screen x position for the new image to start
             xPos = xPos - self.screenWidth
-
-            # Work out the step size of the scroll
-            self.step = self.screenWidth / (self.fps * self.transitionTime)
 
         # Create a sprite containing the image at the calculated x, y position
         self.sprite = pyglet.sprite.Sprite(img=self.image, x=xPos, y=yPos, batch=self.batch, group=self.background)
@@ -197,9 +190,16 @@ class ImageViewer(pyglet.window.Window):
 
     def _AnimateNewImage(self, dt) -> None:
         if self.sprite and self.oldSprite:
+            # Use dt to work out how far to move the image to complete in transitionTime
+            transitionFactor = dt / self.transitionTime
+            step = self.screenWidth * transitionFactor
+
+            # Set the direction of the step
+            step = step if self.direction == Direction.Back else -step
+
             # Move the two sprites in x by the step amount
-            self.sprite.x += self.step
-            self.oldSprite.x += self.step
+            self.sprite.x += step
+            self.oldSprite.x += step
 
             # Check whether the scrolling is complete
             if ((self.direction == Direction.Forward and self.sprite.x < self.targetXPos) or
