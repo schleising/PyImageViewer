@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum, auto
 import sys
 from pathlib import Path
 from typing import Optional, Tuple
@@ -7,6 +8,10 @@ import pyglet
 from pyglet.window import key
 from pyglet.sprite import Sprite
 from pyglet.image import ImageData, ImageDataRegion
+
+class Direction(Enum):
+    Forward = auto()
+    Back = auto()
 
 class ImageViewer(pyglet.window.Window):
     def __init__(self, argv: list[str]) -> None:
@@ -23,6 +28,9 @@ class ImageViewer(pyglet.window.Window):
         # Sprite containing the image
         self.sprite: Optional[Sprite] = None
 
+        # Sprite containing the old image when scrolling in the new one
+        self.oldSprite: Optional[Sprite] = None
+
         # Set safe defaults
         self.xStartDrag = 0
         self.yStartDrag = 0
@@ -31,6 +39,11 @@ class ImageViewer(pyglet.window.Window):
         self.leftCommandHeld = False
         self.mouseX = 0
         self.mouseY = 0
+        self.fps = 50
+        self.targetXPos = 0
+        self.transitionTime = 0.25
+        self.step = 0
+        self.direction: Optional[Direction] = None
 
         # Setup ordered groups to ensure shapes are drawn on top of the image
         self.background = pyglet.graphics.OrderedGroup(0)
@@ -120,10 +133,14 @@ class ImageViewer(pyglet.window.Window):
             pyglet.clock.schedule_once(self.HideMouse, 0.5)
 
     def _LoadImage(self, imageRegion: Optional[ImageDataRegion] = None) -> None:
-        # Remove the existing sprite if it exists
         if self.sprite:
-            self.sprite.delete()
-            self.sprite = None
+            if self.direction is None:
+                # Remove the existing sprite if it exists
+                self.sprite.delete()
+                self.sprite = None
+            else:
+                # Store the old sprite away
+                self.oldSprite = self.sprite
 
         # Remove the existing rectangle if it exists
         if self.rectangle:
@@ -149,6 +166,22 @@ class ImageViewer(pyglet.window.Window):
         xPos = self.screenWidth / 2 - (scalingFactor * self.image.width / 2)
         yPos = self.screenHeight / 2 - (scalingFactor * self.image.height / 2)
 
+        # Work out where in x we want the new image to stop scrolling in
+        self.targetXPos = xPos
+
+        if self.direction == Direction.Forward:
+            # Work out the off screen x position for the new image to start
+            xPos = xPos + self.screenWidth
+
+            # Work out the step size of the scroll
+            self.step = -self.screenWidth / (self.fps * self.transitionTime)
+        elif self.direction == Direction.Back:
+            # Work out the off screen x position for the new image to start
+            xPos = xPos - self.screenWidth
+
+            # Work out the step size of the scroll
+            self.step = self.screenWidth / (self.fps * self.transitionTime)
+
         # Create a sprite containing the image at the calculated x, y position
         self.sprite = pyglet.sprite.Sprite(img=self.image, x=xPos, y=yPos, batch=self.batch, group=self.background)
 
@@ -157,6 +190,32 @@ class ImageViewer(pyglet.window.Window):
 
         # Hide the mouse immediately
         self.HideMouse()
+
+        if self.direction is not None:
+            # Schedule an animation frame at the desired frame rate
+            pyglet.clock.schedule_interval(self._AnimateNewImage, 1 / self.fps)
+
+    def _AnimateNewImage(self, dt) -> None:
+        if self.sprite and self.oldSprite:
+            # Move the two sprites in x by the step amount
+            self.sprite.x += self.step
+            self.oldSprite.x += self.step
+
+            # Check whether the scrolling is complete
+            if ((self.direction == Direction.Forward and self.sprite.x < self.targetXPos) or
+                (self.direction == Direction.Back and self.sprite.x > self.targetXPos)):
+                # Set the sprite x to the target position in case there are rounding errors
+                self.sprite.x = self.targetXPos
+
+                # Unschedule the animation
+                pyglet.clock.unschedule(self._AnimateNewImage)
+
+                # Delete the old sprite
+                self.oldSprite.delete()
+                self.oldSprite = None
+
+                # Reset the scroll direction to None
+                self.direction = None
 
     def _ConstrainToSprite(self, x: int, y: int) -> Tuple[int, int]:
         # Initialise x and y to 0
@@ -183,15 +242,30 @@ class ImageViewer(pyglet.window.Window):
         # Return the constrained x and y positions
         return xPos, yPos
 
-    def _CropImage(self) -> None:
-        # If the rectangle, sprite and image are valid
-        if self.rectangle and self.sprite and self.image:
-            # Get the screen x and y coordinates of the rectangle
-            screenX, screenY = self.rectangle.position
+    def _CropImage(self, cropToScreen: bool) -> None:
+        # If the sprite and image are valid
+        if self.sprite and self.image:
+            if cropToScreen:
+                # Get the screen x and y coordinates of the bottom left
+                screenX, screenY = 0, 0
 
-            # Get the screen width and height of the rectangle
-            screenWidth = self.rectangle.width
-            screenHeight = self.rectangle.height
+                # Get the screen width and height
+                screenWidth = self.screenWidth
+                screenHeight = self.screenHeight
+            elif self.rectangle:
+                # Get the screen x and y coordinates of the rectangle
+                screenX, screenY = self.rectangle.position
+
+                # Get the screen width and height of the rectangle
+                screenWidth = self.rectangle.width
+                screenHeight = self.rectangle.height
+            else:
+                # Get the screen x and y coordinates of the bottom left
+                screenX, screenY = 0, 0
+
+                # Get the screen width and height
+                screenWidth = self.screenWidth
+                screenHeight = self.screenHeight
 
             # Ensure that the x and y of the rectangle are bottom left
             if screenWidth < 0:
@@ -214,11 +288,11 @@ class ImageViewer(pyglet.window.Window):
             # Get the sprite scaling factor
             scalingFactor = self.sprite.scale
 
-            # Get the x, y, width and height in image pixels
-            imageX = int(scaledImageX / scalingFactor)
-            imageY = int(scaledImageY / scalingFactor)
-            imageWidth = int(screenWidth / scalingFactor)
-            imageHeight = int(screenHeight / scalingFactor)
+            # Get the x, y, width and height in image pixels, ensuring the region is within the image bounds
+            imageX = int(max(scaledImageX / scalingFactor, 0))
+            imageY = int(max(scaledImageY / scalingFactor, 0))
+            imageWidth = int(min(screenWidth / scalingFactor, self.image.width))
+            imageHeight = int(min(screenHeight / scalingFactor, self.image.height))
 
             # Get this region of the image
             imageRegion = self.image.get_region(imageX, imageY, imageWidth, imageHeight)
@@ -248,59 +322,84 @@ class ImageViewer(pyglet.window.Window):
             self.batch.draw()
 
     def on_key_press(self, symbol, modifiers):
-        if symbol == key.RIGHT:
-            # Increment the image index
-            self.currentImageIndex += 1
-
-            # Check that the new index is in bounds
-            if self.currentImageIndex > self.maxImageIndex:
-                # Reset to 0 if not
-                self.currentImageIndex = 0
-        elif symbol == key.LEFT:
-            # Decrement the image index
-            self.currentImageIndex -= 1
-
-            # Check that the new index is in bounds
-            if self.currentImageIndex < 0:
-                # Set to the max index value if not
-                self.currentImageIndex = self.maxImageIndex
-        elif symbol == key.C:
-            # Crop the image
-            self._CropImage()
-            return
-        elif symbol == key.S:
-            # If the rectangle has been drawn
-            if self.imageCanBeSaved:
-                # Crop the image
-                self._SaveImage()
-            return
-        elif symbol == key.LCOMMAND:
-            # Clear the rectangle
-            if self.rectangle:
-                self.rectangle.delete()
-                self.rectangle = None
-
-            # Log that the left command key is held down
-            self.leftCommandHeld = True
-
-            # Log the starting point of the rectangle
-            self.xStartDrag, self.yStartDrag = self._ConstrainToSprite(self.mouseX, self.mouseY)
-
-            # Get the crosshair cursor
-            cursor = self.get_system_mouse_cursor(self.CURSOR_CROSSHAIR)
-
-            # Set the crosshair as the current cursor
-            self.set_mouse_cursor(cursor)
-
-            # Show the mouse without autohiding
-            self.ShowMouse(False)
-
-            return
-        elif symbol == key.ESCAPE:
+        if symbol == key.ESCAPE:
             # Quit the application
             pyglet.app.exit()
+        # Ignore the request if the previous scroll is still ongoing
+        elif self.direction is None:
+            if symbol == key.RIGHT:
+                # Crop the image before setting the scroll direction
+                self._CropImage(cropToScreen=True)
+
+                # Set the scroll direction
+                self.direction = Direction.Forward
+    
+                # Increment the image index
+                self.currentImageIndex += 1
+
+                # Check that the new index is in bounds
+                if self.currentImageIndex > self.maxImageIndex:
+                    # Reset to 0 if not
+                    self.currentImageIndex = 0
+            elif symbol == key.LEFT:
+                # Crop the image before setting the scroll direction
+                self._CropImage(cropToScreen=True)
+
+                # Set the scroll direction
+                self.direction = Direction.Back
+    
+                # Decrement the image index
+                self.currentImageIndex -= 1
+
+                # Check that the new index is in bounds
+                if self.currentImageIndex < 0:
+                    # Set to the max index value if not
+                    self.currentImageIndex = self.maxImageIndex
+            elif symbol == key.C:
+                # Ensure the scroll direction is set to None
+                self.direction = None
+
+                # Crop the image
+                self._CropImage(cropToScreen=False)
+
+                # Return without reloading the image
+                return
+            elif symbol == key.S:
+                # If the rectangle has been drawn
+                if self.imageCanBeSaved:
+                    # Crop the image
+                    self._SaveImage()
+
+                # Return without reloading the image
+                return
+            elif symbol == key.LCOMMAND:
+                # Clear the rectangle
+                if self.rectangle:
+                    self.rectangle.delete()
+                    self.rectangle = None
+
+                # Log that the left command key is held down
+                self.leftCommandHeld = True
+
+                # Log the starting point of the rectangle
+                self.xStartDrag, self.yStartDrag = self._ConstrainToSprite(self.mouseX, self.mouseY)
+
+                # Get the crosshair cursor
+                cursor = self.get_system_mouse_cursor(self.CURSOR_CROSSHAIR)
+
+                # Set the crosshair as the current cursor
+                self.set_mouse_cursor(cursor)
+
+                # Show the mouse without autohiding
+                self.ShowMouse(False)
+
+                # Return without reloading the image
+                return
+            else:
+                # If this is not one of the above keys return without redrawing the image
+                return
         else:
-            # If this is not one of the above keys return without redrawing the image
+            # If a scroll is still ongoing return without taking any action
             return
 
         # Clear the rectangle
