@@ -117,20 +117,20 @@ class ImageViewer(pyglet.window.Window):
         # Return the list of images Paths, sorted alphabetically (case insensitive)
         return sorted([image for image in imagePath.iterdir() if image.suffix.lower() in extensions], key=lambda x: x.name.lower())
 
-    def HideMouse(self, dt: float = 0.0) -> None:
+    def _HideMouse(self, dt: float = 0.0) -> None:
         # Hide the mouse after the timeout expires
         self.set_mouse_visible(False)
 
-    def ShowMouse(self, autoHide: bool) -> None:
+    def _ShowMouse(self, autoHide: bool) -> None:
         # Unschedule the mouse hide callback
-        pyglet.clock.unschedule(self.HideMouse)
+        pyglet.clock.unschedule(self._HideMouse)
 
         # Set the mouse to be visible
         self.set_mouse_visible(True)
 
         # If we want to hide the mouse again after a timeout, schedule the callback
         if autoHide:
-            pyglet.clock.schedule_once(self.HideMouse, 0.5)
+            pyglet.clock.schedule_once(self._HideMouse, 0.5)
 
     def _LoadImage(self, imageRegion: Optional[ImageDataRegion] = None) -> None:
         if self.sprite:
@@ -189,7 +189,7 @@ class ImageViewer(pyglet.window.Window):
         self.sprite.scale = scalingFactor
 
         # Hide the mouse immediately
-        self.HideMouse()
+        self._HideMouse()
 
         if self.direction is not None:
             # Schedule an animation frame at the desired frame rate
@@ -391,7 +391,7 @@ class ImageViewer(pyglet.window.Window):
                 self.set_mouse_cursor(cursor)
 
                 # Show the mouse without autohiding
-                self.ShowMouse(False)
+                self._ShowMouse(False)
 
                 # Return without reloading the image
                 return
@@ -419,7 +419,7 @@ class ImageViewer(pyglet.window.Window):
             self.set_mouse_cursor()
 
             # Show the mouse when it moves, autohiding afterwards
-            self.ShowMouse(True)
+            self._ShowMouse(True)
 
     def on_mouse_motion(self, x, y, dx, dy):
         # Store the current mouse x and y position
@@ -445,14 +445,14 @@ class ImageViewer(pyglet.window.Window):
             self.rectangle.opacity = 128
 
             # Show the mouse when it moves, not autohiding
-            self.ShowMouse(False)
+            self._ShowMouse(False)
         else:
             # Show the mouse when it moves, autohiding afterwards
-            self.ShowMouse(True)
+            self._ShowMouse(True)
 
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
         # Show the mouse when scrolling, autohiding afterwards
-        self.ShowMouse(True)
+        self._ShowMouse(True)
 
         if self.sprite:
             if scroll_y > 0.2 or scroll_y < -0.2:
@@ -481,7 +481,7 @@ class ImageViewer(pyglet.window.Window):
 
     def on_mouse_press(self, x, y, button, modifiers):
         # Show the mouse while pressed, do not autohide
-        self.ShowMouse(False)
+        self._ShowMouse(False)
 
         # Clear the left command key held status
         self.leftCommandHeld = False
@@ -499,7 +499,7 @@ class ImageViewer(pyglet.window.Window):
 
     def on_mouse_release(self, x, y, button, modifiers):
         # Show the mouse when released, autohiding after the timeout
-        self.ShowMouse(True)
+        self._ShowMouse(True)
 
         # Calling set mouse cursor with no parameter resets it to the default
         self.set_mouse_cursor()
