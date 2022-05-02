@@ -312,6 +312,12 @@ class ImageViewer(pyglet.window.Window):
             # Save the new file
             self.image.save(newFilename)
 
+            # Add the new image to the list
+            self.images.insert(self.currentImageIndex + 1, newFilename)
+
+            # Make this image the current one
+            self.currentImageIndex = self.images.index(newFilename)
+
     def on_draw(self):
         # Check that image is not None
         if self.sprite:
