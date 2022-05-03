@@ -198,7 +198,7 @@ class ImageViewer(pyglet.window.Window):
     def _AnimateNewImage(self, dt) -> None:
         if self.sprite and self.oldSprite:
             # Set the start transition time if it has not yet been started
-            if self.startTransitionTime == None:
+            if self.startTransitionTime is None:
                 self.startTransitionTime = time.time()
 
             # Get the time now
@@ -355,7 +355,7 @@ class ImageViewer(pyglet.window.Window):
 
                 # Set the scroll direction
                 self.direction = Direction.Forward
-    
+
                 # Increment the image index
                 self.currentImageIndex += 1
 
@@ -369,7 +369,7 @@ class ImageViewer(pyglet.window.Window):
 
                 # Set the scroll direction
                 self.direction = Direction.Back
-    
+
                 # Decrement the image index
                 self.currentImageIndex -= 1
 
@@ -454,11 +454,11 @@ class ImageViewer(pyglet.window.Window):
 
             # Draw the rectangle
             self.rectangle = pyglet.shapes.Rectangle(
-                self.xStartDrag, 
-                self.yStartDrag, 
-                xPos - self.xStartDrag, 
-                yPos - self.yStartDrag, 
-                (30, 144, 255), 
+                self.xStartDrag,
+                self.yStartDrag,
+                xPos - self.xStartDrag,
+                yPos - self.yStartDrag,
+                (30, 144, 255),
                 batch=self.batch,
                 group=self.foreground
             )
