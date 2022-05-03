@@ -205,7 +205,7 @@ class ImageViewer(pyglet.window.Window):
             timeNow = time.time()
 
             # Use the difference between the start time and now to calculate how far through the transition we are
-            transitionFactor = 0.51 * math.sin((timeNow - self.startTransitionTime - (2 * self.transitionTime / 4)) * 2 * math.pi / (2 * self.transitionTime )) + 0.51
+            transitionFactor = 1.001 * math.sin((timeNow - self.startTransitionTime) * 2 * math.pi / (4 * self.transitionTime))
 
             # Use this factor to calculate the new x position
             newXPos = self.startXPos + ((self.targetXPos - self.startXPos) * transitionFactor)
