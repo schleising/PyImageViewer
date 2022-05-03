@@ -9,11 +9,15 @@ from setuptools import setup
 
 APP = ['ImageViewer/ImageViewer.py']
 DATA_FILES = []
-OPTIONS = {'argv_emulation': True}
+OPTIONS = {
+    'argv_emulation': True,
+    'iconfile': 'ImageViewer/ImageViewer.icns'
+}
 
 setup(
     app=APP,
-    data_files=DATA_FILES,
+    data_files=DATA_FILES,  # type: ignore
     options={'py2app': OPTIONS},
     setup_requires=['py2app'],
+    version='1.0.0',
 )
