@@ -1,7 +1,9 @@
 from datetime import datetime
 from enum import Enum, auto
+import math
 import sys
 from pathlib import Path
+import time
 from typing import Optional, Tuple
 
 import pyglet
@@ -40,9 +42,11 @@ class ImageViewer(pyglet.window.Window):
         self.mouseX = 0
         self.mouseY = 0
         self.fps = 60
+        self.startXPos = 0
         self.targetXPos = 0
-        self.transitionTime = 0.25
+        self.transitionTime = 0.5
         self.direction: Optional[Direction] = None
+        self.startTransitionTime: Optional[float] = None
 
         # Setup ordered groups to ensure shapes are drawn on top of the image
         self.background = pyglet.graphics.OrderedGroup(0)
@@ -175,6 +179,9 @@ class ImageViewer(pyglet.window.Window):
             # Work out the off screen x position for the new image to start
             xPos = xPos - self.screenWidth
 
+        # Store the starting position for use in calculating the transition
+        self.startXPos = xPos
+
         # Create a sprite containing the image at the calculated x, y position
         self.sprite = pyglet.sprite.Sprite(img=self.image, x=xPos, y=yPos, batch=self.batch, group=self.background)
 
@@ -190,16 +197,22 @@ class ImageViewer(pyglet.window.Window):
 
     def _AnimateNewImage(self, dt) -> None:
         if self.sprite and self.oldSprite:
-            # Use dt to work out how far to move the image to complete in transitionTime
-            transitionFactor = dt / self.transitionTime
-            step = self.screenWidth * transitionFactor
+            # Set the start transition time if it has not yet been started
+            if self.startTransitionTime == None:
+                self.startTransitionTime = time.time()
 
-            # Set the direction of the step
-            step = step if self.direction == Direction.Back else -step
+            # Get the time now
+            timeNow = time.time()
 
-            # Move the two sprites in x by the step amount
-            self.sprite.x += step
-            self.oldSprite.x += step
+            # Use the difference between the start time and now to calculate how far through the transition we are
+            transitionFactor = 0.51 * math.sin((timeNow - self.startTransitionTime - (2 * self.transitionTime / 4)) * 2 * math.pi / (2 * self.transitionTime )) + 0.51
+
+            # Use this factor to calculate the new x position
+            newXPos = self.startXPos + ((self.targetXPos - self.startXPos) * transitionFactor)
+
+            # Move the two sprites to the new x positions
+            self.oldSprite.x += newXPos - self.sprite.x
+            self.sprite.x = newXPos
 
             # Check whether the scrolling is complete
             if ((self.direction == Direction.Forward and self.sprite.x < self.targetXPos) or
@@ -216,6 +229,9 @@ class ImageViewer(pyglet.window.Window):
 
                 # Reset the scroll direction to None
                 self.direction = None
+
+                # Reset the start transition time to None
+                self.startTransitionTime = None
 
     def _ConstrainToSprite(self, x: int, y: int) -> Tuple[int, int]:
         # Initialise x and y to 0
