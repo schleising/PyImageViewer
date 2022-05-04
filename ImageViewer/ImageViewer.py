@@ -16,7 +16,7 @@ class Direction(Enum):
     Back = auto()
 
 class ImageViewer(pyglet.window.Window):
-    def __init__(self, argv: list[str]) -> None:
+    def __init__(self, inputPath: Path) -> None:
         # Call base class init
         super(ImageViewer, self).__init__()
 
@@ -56,24 +56,18 @@ class ImageViewer(pyglet.window.Window):
         self.batch = pyglet.graphics.Batch()
 
         # Check for a file on the command line
-        if len(argv) > 1:
-            # Get the file path
-            filePath = Path(argv[1])
-
+        if inputPath.is_file():
             # Get the parent folder
-            imagePath = filePath.parent
+            imagePath = inputPath.parent
 
             # Get the list of image files in this folder
             self.images = self._GetImagePathList(imagePath)
 
             # Work out where in the list the current image is
-            self.currentImageIndex = self.images.index(filePath)
+            self.currentImageIndex = self.images.index(inputPath)
         else:
-            # Use a default path
-            imagePath = Path('/Users/steve/Pictures/Test Images')
-
             # Get the images
-            self.images = self._GetImagePathList(imagePath)
+            self.images = self._GetImagePathList(inputPath)
 
             # Set the index to 0
             self.currentImageIndex = 0
@@ -542,7 +536,9 @@ class ImageViewer(pyglet.window.Window):
                 self.rectangle = None
 
 def main() -> None:
-    imageViewer = ImageViewer(sys.argv)
+    inputPath = Path.home() / 'Pictures/Test Images'
+
+    ImageViewer(inputPath)
 
 if __name__ == '__main__':
     main()

@@ -7,17 +7,18 @@ Usage:
 
 from setuptools import setup
 
-APP = ['ImageViewer/ImageViewer.py']
+APP = ['main.py']
 DATA_FILES = []
 OPTIONS = {
     'argv_emulation': True,
-    'iconfile': 'ImageViewer/ImageViewer.icns'
+    'iconfile': 'ImageViewer/ImageViewer.icns',
 }
 
 setup(
+    name='PyImageViewer',
     app=APP,
-    data_files=DATA_FILES,  # type: ignore
+    data_files=DATA_FILES,
     options={'py2app': OPTIONS},
     setup_requires=['py2app'],
-    version='1.0.0',
+    version='0.0.0',
 )
