@@ -1,7 +1,6 @@
 from datetime import datetime
 from enum import Enum, auto
 import math
-import sys
 from pathlib import Path
 import time
 from typing import Optional, Tuple
@@ -10,6 +9,8 @@ import pyglet
 from pyglet.window import key
 from pyglet.sprite import Sprite
 from pyglet.image import ImageData, ImageDataRegion
+
+from ImageViewer.FileTypes import supportedExtensions
 
 class Direction(Enum):
     Forward = auto()
@@ -90,29 +91,8 @@ class ImageViewer(pyglet.window.Window):
 
     # Function to return a list of Paths pointing at images in the current folder
     def _GetImagePathList(self, imagePath: Path) -> list[Path]:
-        # List of supported extensions
-        extensions = [
-            '.jpg',
-            '.jpeg',
-            '.png',
-            '.gif',
-            '.bmp',
-            '.dds',
-            '.exif',
-            '.jp2',
-            '.jpx',
-            '.pcx',
-            '.pnm',
-            '.ras',
-            '.tga',
-            '.tif',
-            '.tiff',
-            '.xbm',
-            '.xpm',
-        ]
-
         # Return the list of images Paths, sorted alphabetically (case insensitive)
-        return sorted([image for image in imagePath.iterdir() if image.suffix.lower() in extensions], key=lambda x: x.name.lower())
+        return sorted([image for image in imagePath.iterdir() if image.suffix.lower() in supportedExtensions.values()], key=lambda x: x.name.lower())
 
     def _HideMouse(self, dt: float = 0.0) -> None:
         # Hide the mouse after the timeout expires
@@ -536,6 +516,7 @@ class ImageViewer(pyglet.window.Window):
                 self.rectangle = None
 
 def main() -> None:
+    # For testing if this is run standalone open the test images
     inputPath = Path.home() / 'Pictures/Test Images'
 
     ImageViewer(inputPath)
