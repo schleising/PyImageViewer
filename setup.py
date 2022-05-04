@@ -9,9 +9,32 @@ from setuptools import setup
 
 APP = ['main.py']
 DATA_FILES = []
+
+# A custom plist for file associations
+Plist = dict(
+    CFBundleDocumentTypes=[
+        dict(
+            CFBundleTypeExtensions=['jpeg','jpg'],
+            CFBundleTypeName='JPEG image',
+            CFBundleTypeRole='Viewer',
+            ),
+        dict(
+            CFBundleTypeExtensions=['png'],
+            CFBundleTypeName='PNG image',
+            CFBundleTypeRole='Viewer',
+            ),
+        dict(
+            CFBundleTypeExtensions=['gif'],
+            CFBundleTypeName='GIF image',
+            CFBundleTypeRole='Viewer',
+            ),
+        ]
+    )
+
 OPTIONS = {
-    'argv_emulation': True,
+    # 'argv_emulation': True,
     'iconfile': 'ImageViewer/ImageViewer.icns',
+    'plist': Plist,
 }
 
 setup(
@@ -20,5 +43,5 @@ setup(
     data_files=DATA_FILES,
     options={'py2app': OPTIONS},
     setup_requires=['py2app'],
-    version='0.0.0',
+    version='1.1.0',
 )
