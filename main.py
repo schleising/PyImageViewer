@@ -7,7 +7,7 @@ from AppLauncher import AppLauncher
 
 def PathValid(inputPath: Path) -> bool:
     # Check that the input path is a file and the suffix is supported
-    return inputPath.is_file and inputPath.suffix in supportedExtensions.values()
+    return inputPath.is_file() and inputPath.suffix.lower() in supportedExtensions.values()
 
 def main() -> None:
     if len(sys.argv) > 1 and PathValid(Path(sys.argv[1])):
