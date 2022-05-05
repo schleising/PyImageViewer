@@ -12,6 +12,7 @@ supportedExtensions = {
     'Truevision Targa Graphic': '.tga',
     'Tagged Image File Format1': '.tif',
     'Tagged Image File Format2': '.tiff',
+    'WEBP': '.webp',
     'X11 bitmap': '.xbm',
     'X11 icon': '.xpm',
 }
