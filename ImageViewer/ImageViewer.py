@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from enum import Enum, auto
 import math
@@ -87,6 +88,7 @@ class ImageViewer(pyglet.window.Window):
         self._LoadImage()
 
         # Run the app
+        logging.info('Starting Pyglet mainloop')
         pyglet.app.run()
 
     # Function to return a list of Paths pointing at images in the current folder
@@ -320,6 +322,7 @@ class ImageViewer(pyglet.window.Window):
     def on_key_press(self, symbol, modifiers):
         if symbol == key.ESCAPE:
             # Quit the application
+            logging.info('Exiting Pyglet application')
             pyglet.app.exit()
         # Ignore the request if the previous scroll is still ongoing
         elif self.direction is None:

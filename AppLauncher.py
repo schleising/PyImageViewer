@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from pathlib import Path
 import tkinter as tk
@@ -8,13 +9,6 @@ from ImageViewer.FileTypes import supportedExtensions
 
 class AppLauncher:
     def __init__(self) -> None:
-        # Set the log file name
-        self.logFile = Path.home() / '.log.txt'
-
-        # If the file exists, delete it
-        if self.logFile.is_file():
-            self.logFile.unlink()
-
         # Set the initial folder
         self.InitialDir: Path = Path.home() / 'Pictures'
 
@@ -38,26 +32,28 @@ class AppLauncher:
         self.root.after(400, self._DelayedFunction)
 
         # Start the mainloop to service the callbacks
+        logging.info('Starting Tk mainloop')
         self.root.mainloop()
 
     def _GetFilePath(self, *args) -> None:
         # Log that we are in this function
-        self._Log('_GetFilePath')
+        logging.info('in _GetFilePath()')
 
         # Log the files sent to this application (should only be one)
         for arg in args:
-            self._Log(arg)
+            logging.info(arg)
 
         # Get the file into a path variable
         if args:
             self.FilePath = Path(args[0])
 
             # Stop the Tk mainloop if we have set the file name
+            logging.info('Exiting Tk mainloop')
             self.root.quit()
 
     def _DelayedFunction(self) -> None:
         # Log that we are in this function
-        self._Log('_DelayedFunction')
+        logging.info('in _DelayedFunction()')
 
         # If the file has not yet been set via the finder window
         if self.FilePath is None:
@@ -65,13 +61,5 @@ class AppLauncher:
             self.FilePath = Path(filedialog.askopenfilename(filetypes=list(supportedExtensions.items()), initialdir=self.InitialDir))
 
         # Stop the Tk mainloop
+        logging.info('Exiting Tk mainloop')
         self.root.quit()
-
-    def _Log(self, text: str) -> None:
-        # Get the current UTC time
-        currentTime = datetime.utcnow().isoformat(sep=' ', timespec='milliseconds')
-
-        # Open the log file
-        with open(self.logFile, 'a') as logFile:
-            # Write the time and text to the log file
-            logFile.write(f'{currentTime}: {text}\n')
