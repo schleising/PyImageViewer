@@ -81,6 +81,12 @@ class ImageViewer(pyglet.window.Window):
         self.screenWidth = pyglet.canvas.Display().get_default_screen().width
         self.screenHeight = pyglet.canvas.Display().get_default_screen().height
 
+        # Create a list of points on a Bezier curve, first ensure the number of points on the curve is adequate
+        framesInTransition = math.ceil(self.fps * self.transitionTime * 10)
+
+        # Calculate the points given the ideal frame numbers, storing them in point list as a lookup table
+        self.pointList = [self._CalculateBezierPoint(t / framesInTransition) for t in range(framesInTransition)]
+
         # Set window to full screen
         self.set_fullscreen(True)
 
@@ -171,6 +177,36 @@ class ImageViewer(pyglet.window.Window):
             # Schedule an animation frame at the desired frame rate
             pyglet.clock.schedule_interval(self._AnimateNewImage, 1 / self.fps)
 
+    def _CalculateBezierPoint(self, t: float) -> Tuple[float, float]:
+        # Set the P0 - P3 control points
+        p0 = (0.0, 0.0)
+        p1 = (0.25, 0.1)
+        p2 = (0.25, 1.0)
+        p3 = (1.0, 1.0)
+
+        # Initialise the returned point to 0, 0
+        point: list[float] = [0, 0]
+
+        # Calculate x and y
+        for i in range(2):
+            point[i] = ((1 - t)**3 * p0[i]) + (3 * (1 - t)**2 * t * p1[i]) + (3 * (1 - t) * t**2 * p2[i]) + (t**3 * p3[i])
+
+        # Return the calculated point
+        return tuple(point)
+
+    def _GetBezierMovementRatio(self, t: float) -> float:
+        # Initialise y to 0
+        y = 0
+
+        # Iterate over the points in the list    
+        for x, y in self.pointList:
+            # Stop when the x point is greater than the time factor
+            if x > t:
+                break
+
+        # Return the y point associated with this x point
+        return y
+
     def _AnimateNewImage(self, dt) -> None:
         if self.sprite and self.oldSprite:
             # Set the start transition time if it has not yet been started
@@ -180,8 +216,11 @@ class ImageViewer(pyglet.window.Window):
             # Get the time now
             timeNow = time.time()
 
-            # Use the difference between the start time and now to calculate how far through the transition we are
-            transitionFactor = 1.001 * math.sin((timeNow - self.startTransitionTime) * 2 * math.pi / (4 * self.transitionTime))
+            # Calculate the amount of time through the transition we are (complete = 1)
+            timeFactor = (timeNow - self.startTransitionTime) / self.transitionTime
+
+            # Use the Bezier lookup table to get the movement factor (y) from the time factor (x)
+            transitionFactor = self._GetBezierMovementRatio(timeFactor)
 
             # Use this factor to calculate the new x position
             newXPos = self.startXPos + ((self.targetXPos - self.startXPos) * transitionFactor)
@@ -190,9 +229,8 @@ class ImageViewer(pyglet.window.Window):
             self.oldSprite.x += newXPos - self.sprite.x
             self.sprite.x = newXPos
 
-            # Check whether the scrolling is complete
-            if ((self.direction == Direction.Forward and self.sprite.x < self.targetXPos) or
-                (self.direction == Direction.Back and self.sprite.x > self.targetXPos)):
+            # Check whether the scrolling time has elapsed
+            if timeFactor > 1:
                 # Set the sprite x to the target position in case there are rounding errors
                 self.sprite.x = self.targetXPos
 
