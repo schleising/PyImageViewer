@@ -50,6 +50,16 @@ class ImageViewer(pyglet.window.Window):
         self.transitionTime = 0.5
         self.direction: Optional[Direction] = None
         self.startTransitionTime: Optional[float] = None
+        self.bezierCurve: Optional[list[pyglet.shapes.Line]] = None
+        # Set the P0 - P3 control points
+        self.p0 = (0.0, 0.0)
+        self.p1 = (0.25, 0.1)
+        self.p2 = (0.25, 1.0)
+        self.p3 = (1.0, 1.0)
+        self.p0p1Line: Optional[pyglet.shapes.Line] = None
+        self.p2p3Line: Optional[pyglet.shapes.Line] = None
+        self.p1Circle: Optional[pyglet.shapes.Circle] = None
+        self.p2Circle: Optional[pyglet.shapes.Circle] = None
 
         # Setup ordered groups to ensure shapes are drawn on top of the image
         self.background = pyglet.graphics.OrderedGroup(0)
@@ -183,18 +193,12 @@ class ImageViewer(pyglet.window.Window):
             pyglet.clock.schedule_interval(self._AnimateNewImage, 1 / self.fps)
 
     def _CalculateBezierPoint(self, t: float) -> tuple[float, float]:
-        # Set the P0 - P3 control points
-        p0 = (0.0, 0.0)
-        p1 = (0.25, 0.1)
-        p2 = (0.25, 1.0)
-        p3 = (1.0, 1.0)
-
         # Initialise the returned point to 0, 0
         point: list[float] = [0, 0]
 
         # Calculate x and y
         for i in range(2):
-            point[i] = ((1 - t)**3 * p0[i]) + (3 * (1 - t)**2 * t * p1[i]) + (3 * (1 - t) * t**2 * p2[i]) + (t**3 * p3[i])
+            point[i] = ((1 - t)**3 * self.p0[i]) + (3 * (1 - t)**2 * t * self.p1[i]) + (3 * (1 - t) * t**2 * self.p2[i]) + (t**3 * self.p3[i])
 
         # Return the calculated point
         return tuple(point)
@@ -360,6 +364,103 @@ class ImageViewer(pyglet.window.Window):
             # Make this image the current one
             self.currentImageIndex = self.images.index(newFilename)
 
+    def _ShowBezierCurve(self) -> None:
+        # Zip the points with the next point to produce a list of lines
+        lineList = zip(self.pointList, self.pointList[1:])
+
+        # Create the Bezier curve
+        self.bezierCurve = [pyglet.shapes.Line(
+            x1 * self.screenWidth,
+            y1 * self.screenHeight,
+            x2 * self.screenWidth,
+            y2 * self.screenHeight,
+            batch=self.batch,
+            group=self.foreground,
+            color=(255, 0, 0),
+            width=3
+        ) for (x1, y1), (x2, y2) in lineList]
+
+        # Create a line showing the P0 -> P1 control line
+        self.p0p1Line = pyglet.shapes.Line(
+            self.p0[0] * self.screenWidth,
+            self.p0[1] * self.screenHeight,
+            self.p1[0] * self.screenWidth,
+            self.p1[1] * self.screenHeight,
+            batch=self.batch,
+            group=self.foreground,
+            color=(0, 255, 0),
+            width=5
+        )
+
+        # Create a circle for P1
+        self.p1Circle = pyglet.shapes.Circle(
+            self.p1[0] * self.screenWidth,
+            self.p1[1] * self.screenHeight,
+            radius=10,
+            color=(0, 255, 0),
+            batch=self.batch,
+            group=self.foreground
+        )
+
+        # Create a line showing the P2 -> P3 control line
+        self.p2p3Line = pyglet.shapes.Line(
+            self.p2[0] * self.screenWidth,
+            self.p2[1] * self.screenHeight,
+            self.p3[0] * self.screenWidth,
+            self.p3[1] * self.screenHeight,
+            batch=self.batch,
+            group=self.foreground,
+            color=(0, 0, 255),
+            width=5
+        )
+
+        # Create a circle for P2
+        self.p2Circle = pyglet.shapes.Circle(
+            self.p2[0] * self.screenWidth,
+            self.p2[1] * self.screenHeight,
+            radius=10,
+            color=(0, 0, 255),
+            batch=self.batch,
+            group=self.foreground
+        )
+
+    def _HideBezierCurve(self) -> None:
+        if self.bezierCurve:
+            # If the Bezier curve is shown, delete the lines making itb up
+            for line in self.bezierCurve:
+                line.delete()
+
+            # Set the list to None
+            self.bezierCurve = None
+
+        if self.p0p1Line:
+            # Delete the line
+            self.p0p1Line.delete()
+
+            # set the line to None
+            self.p0p1Line = None
+
+        if self.p1Circle:
+            # Delete the circle
+            self.p1Circle.delete()
+
+            # set the circle to None
+            self.p1Circle = None
+
+        if self.p2p3Line:
+            # Delete the line
+            self.p2p3Line.delete()
+
+            # set the line to None
+            self.p2p3Line = None
+
+        if self.p2Circle:
+            # Delete the circle
+            self.p2Circle.delete()
+
+            # set the circle to None
+            self.p2Circle = None
+
     def on_draw(self):
         # Check that image is not None
         if self.sprite:
@@ -375,6 +476,15 @@ class ImageViewer(pyglet.window.Window):
             logging.info('Exiting Pyglet application')
             pyglet.app.exit()
         # Ignore the request if the previous scroll is still ongoing
+        elif symbol == key.B:
+            if self.bezierCurve:
+                # If the Bezier curve is shown, delete it
+                self._HideBezierCurve()
+                return
+            else:
+                # If the Bezier curve is not shown, create and show it
+                self._ShowBezierCurve()
+                return
         elif self.direction is None:
             if symbol == key.RIGHT:
                 # Crop the image before setting the scroll direction
