@@ -4,7 +4,7 @@ from enum import Enum, auto
 import math
 from pathlib import Path
 import time
-from typing import Optional, Tuple
+from typing import Optional
 
 import pyglet
 from pyglet.window import key
@@ -177,7 +177,7 @@ class ImageViewer(pyglet.window.Window):
             # Schedule an animation frame at the desired frame rate
             pyglet.clock.schedule_interval(self._AnimateNewImage, 1 / self.fps)
 
-    def _CalculateBezierPoint(self, t: float) -> Tuple[float, float]:
+    def _CalculateBezierPoint(self, t: float) -> tuple[float, float]:
         # Set the P0 - P3 control points
         p0 = (0.0, 0.0)
         p1 = (0.25, 0.1)
@@ -247,7 +247,7 @@ class ImageViewer(pyglet.window.Window):
                 # Reset the start transition time to None
                 self.startTransitionTime = None
 
-    def _ConstrainToSprite(self, x: int, y: int) -> Tuple[int, int]:
+    def _ConstrainToSprite(self, x: int, y: int) -> tuple[int, int]:
         # Initialise x and y to 0
         xPos = 0
         yPos = 0
