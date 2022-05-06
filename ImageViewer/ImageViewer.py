@@ -85,7 +85,7 @@ class ImageViewer(pyglet.window.Window):
         framesInTransition = math.ceil(self.fps * self.transitionTime * 10)
 
         # Calculate the points given the ideal frame numbers, storing them in point list as a lookup table
-        self.pointList = [self._CalculateBezierPoint(t / framesInTransition) for t in range(framesInTransition)]
+        self.pointList = [self._CalculateBezierPoint(t / framesInTransition) for t in range(framesInTransition + 1)]
 
         # Set window to full screen
         self.set_fullscreen(True)
