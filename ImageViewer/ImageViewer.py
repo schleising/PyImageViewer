@@ -1,3 +1,4 @@
+from bisect import bisect
 import logging
 from datetime import datetime
 from enum import Enum, auto
@@ -82,10 +83,14 @@ class ImageViewer(pyglet.window.Window):
         self.screenHeight = pyglet.canvas.Display().get_default_screen().height
 
         # Create a list of points on a Bezier curve, first ensure the number of points on the curve is adequate
-        framesInTransition = math.ceil(self.fps * self.transitionTime * 10)
+        framesInTransition = math.ceil(self.fps * self.transitionTime)
 
         # Calculate the points given the ideal frame numbers, storing them in point list as a lookup table
         self.pointList = [self._CalculateBezierPoint(t / framesInTransition) for t in range(framesInTransition + 1)]
+
+        # Get the x and y points into individual lists to use later with bisect
+        self.xPoints = [x for x, y in self.pointList]
+        self.yPoints = [y for x, y in self.pointList]
 
         # Set window to full screen
         self.set_fullscreen(True)
@@ -195,16 +200,23 @@ class ImageViewer(pyglet.window.Window):
         return tuple(point)
 
     def _GetBezierMovementRatio(self, t: float) -> float:
-        # Initialise y to 0
-        y = 0
+        # Get the index of t within the x points
+        index = bisect(self.xPoints, t)
 
-        # Iterate over the points in the list    
-        for x, y in self.pointList:
-            # Stop when the x point is greater than the time factor
-            if x > t:
-                break
+        if index <= 0:
+            # Return the first point if the index is 0 or less
+            return self.yPoints[0]
+        elif index >= len(self.yPoints):
+            # Return the last point of the index is the length of the list or greater
+            return self.yPoints[-1]
 
-        # Return the y point associated with this x point
+        # Work out how far between the nearest two points t is
+        xFraction = (t - self.xPoints[index-1]) / (self.xPoints[index] - self.xPoints[index - 1])
+
+        # Use this to interpolate between the two y points related to this value of t
+        y = self.yPoints[index-1] + ((self.yPoints[index] - self.yPoints[index-1]) * xFraction)
+
+        # Return the interpolated y point associated with this t
         return y
 
     def _AnimateNewImage(self, dt) -> None:
