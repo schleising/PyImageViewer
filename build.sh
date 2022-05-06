@@ -11,7 +11,7 @@ pip install -U pip
 # Install the requirements in the new environment
 pip install -r requirements.txt
 
-# Remmove the dist and build directories
+# Remove the dist and build directories
 rm -rf dist
 rm -rf build
 
@@ -23,3 +23,19 @@ deactivate
 
 # Remove the environment
 rm -rf .piv-build-env
+
+# Remove the build directory
+rm -rf build
+
+# Zip the application
+tar -czf dist/PyImageViewer.app.tar.gz dist/PyImageViewer.app
+
+# Remove the existing Application and zip file from Downloads
+rm -rf ~/Downloads/PyImageViewer.app
+rm ~/Downloads/PyImageViewer.app.tar.gz
+
+# Move the Application and zip file into Downloads
+mv dist/PyImageViewer.app.tar.gz dist/PyImageViewer.app ~/Downloads
+
+# Remove the dist folder
+rm -rf dist
