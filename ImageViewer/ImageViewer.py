@@ -52,14 +52,16 @@ class ImageViewer(pyglet.window.Window):
         self.startTransitionTime: Optional[float] = None
         self.bezierCurve: Optional[list[pyglet.shapes.Line]] = None
         # Set the P0 - P3 control points
-        self.p0 = (0.0, 0.0)
-        self.p1 = (0.25, 0.1)
-        self.p2 = (0.25, 1.0)
-        self.p3 = (1.0, 1.0)
+        self.p0: tuple[float, float] = (0.0, 0.0)
+        self.p1: tuple[float, float] = (0.25, 0.1)
+        self.p2: tuple[float, float] = (0.25, 1.0)
+        self.p3: tuple[float, float] = (1.0, 1.0)
         self.p0p1Line: Optional[pyglet.shapes.Line] = None
         self.p2p3Line: Optional[pyglet.shapes.Line] = None
         self.p1Circle: Optional[pyglet.shapes.Circle] = None
         self.p2Circle: Optional[pyglet.shapes.Circle] = None
+        self.draggingP1Circle = False
+        self.draggingP2Circle = False
 
         # Setup ordered groups to ensure shapes are drawn on top of the image
         self.background = pyglet.graphics.OrderedGroup(0)
@@ -92,15 +94,8 @@ class ImageViewer(pyglet.window.Window):
         self.screenWidth = pyglet.canvas.Display().get_default_screen().width
         self.screenHeight = pyglet.canvas.Display().get_default_screen().height
 
-        # Create a list of points on a Bezier curve, first ensure the number of points on the curve is adequate
-        framesInTransition = math.ceil(self.fps * self.transitionTime)
-
-        # Calculate the points given the ideal frame numbers, storing them in point list as a lookup table
-        self.pointList = [self._CalculateBezierPoint(t / framesInTransition) for t in range(framesInTransition + 1)]
-
-        # Get the x and y points into individual lists to use later with bisect
-        self.xPoints = [x for x, y in self.pointList]
-        self.yPoints = [y for x, y in self.pointList]
+        # Create the initial Bezier curve
+        self._CreateBezierCurve()
 
         # Set window to full screen
         self.set_fullscreen(True)
@@ -202,6 +197,17 @@ class ImageViewer(pyglet.window.Window):
 
         # Return the calculated point
         return tuple(point)
+
+    def _CreateBezierCurve(self):
+        # Create a list of points on a Bezier curve, first ensure the number of points on the curve is adequate
+        framesInTransition = math.ceil(self.fps * self.transitionTime)
+
+        # Calculate the points given the ideal frame numbers, storing them in point list as a lookup table
+        self.pointList = [self._CalculateBezierPoint(t / framesInTransition) for t in range(framesInTransition + 1)]
+
+        # Get the x and y points into individual lists to use later with bisect
+        self.xPoints = [x for x, y in self.pointList]
+        self.yPoints = [y for x, y in self.pointList]
 
     def _GetBezierMovementRatio(self, t: float) -> float:
         # Get the index of t within the x points
@@ -663,8 +669,77 @@ class ImageViewer(pyglet.window.Window):
         # Calling set mouse cursor with no parameter resets it to the default
         self.set_mouse_cursor()
 
+        # Clear the circle dragging flags
+        self.draggingP1Circle = False
+        self.draggingP2Circle = False
+
+    def _MouseInCircle(self, x, y, circle: pyglet.shapes.Circle) -> bool:
+        # Get the x and y distance from the circle
+        xDelta = abs(x - circle.x)
+        yDelta = abs(y - circle.y)
+
+        # Use this to get the absolute distance from the circle
+        distanceFromCentre = math.sqrt(xDelta**2 + yDelta**2)
+
+        # Return True if this distance is less than the circle radius, otherwise False
+        return distanceFromCentre <= circle.radius
+
+    def _ConstrainToScreen(self, x, y) -> tuple[float, float]:
+        # Constrain the point to the screen in x
+        if x < 0:
+            x = 0
+        elif x > self.screenWidth - 1:
+            x = self.screenWidth -1
+
+        # Constrain the point to the screen in y
+        if y < 0:
+            y = 0
+        elif y > self.screenHeight - 1:
+            y = self.screenHeight -1
+
+        # Return x and y as a tuple
+        return x, y
+
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
-        if self.sprite:
+        if self.p1Circle and not self.draggingP2Circle and (self.draggingP1Circle or self._MouseInCircle(x, y, self.p1Circle)):
+            # Set the draggin P1 flag to True
+            self.draggingP1Circle = True
+
+            # Update the x and y position of the circle
+            self.p1Circle.x += dx
+            self.p1Circle.y += dy
+
+            # Constrain the circle to the screen
+            self.p1Circle.position = self._ConstrainToScreen(self.p1Circle.x, self.p1Circle.y)
+
+            # Work out the new P1 control point position
+            self.p1 = self.p1Circle.x / self.screenWidth, self.p1Circle.y / self.screenHeight
+
+            # Update the Bezier curve
+            self._CreateBezierCurve()
+
+            # Show the new Bezier curve and control lines / points
+            self._ShowBezierCurve()
+        elif self.p2Circle and not self.draggingP1Circle and (self.draggingP2Circle or self._MouseInCircle(x, y, self.p2Circle)):
+            # Set the draggin P1 flag to True
+            self.draggingP2Circle = True
+
+            # Update the x and y position of the circle
+            self.p2Circle.x += dx
+            self.p2Circle.y += dy
+
+            # Constrain the circle to the screen
+            self.p2Circle.position = self._ConstrainToScreen(self.p2Circle.x, self.p2Circle.y)
+
+            # Work out the new P1 control point position
+            self.p2 = self.p2Circle.x / self.screenWidth, self.p2Circle.y / self.screenHeight
+
+            # Update the Bezier curve
+            self._CreateBezierCurve()
+
+            # Show the new Bezier curve and control lines / points
+            self._ShowBezierCurve()
+        elif self.sprite:
             # Update the x and y positions by the drag amounts
             self.sprite.x = self.sprite.x + dx
             self.sprite.y = self.sprite.y + dy
