@@ -664,10 +664,6 @@ class ImageViewer(pyglet.window.Window):
         self.set_mouse_cursor()
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
-        # Store the current mouse x and y position
-        self.mouseX = x
-        self.mouseY = y
-
         if self.sprite:
             # Update the x and y positions by the drag amounts
             self.sprite.x = self.sprite.x + dx
