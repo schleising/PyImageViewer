@@ -198,8 +198,11 @@ class FileBrowser(Window):
             # Set the viewer window back to full screen
             self.viewerWindow.set_fullscreen(True)
 
-            # Close this browser window
-            self.close()
+            # Activate the viewer window to ensure it has focus
+            self.viewerWindow.activate()
+
+            # Hide this browser window
+            self.set_visible(False)
         elif symbol == key.F:
             # Toggle display of the FPS
             self.displayFps = not self.displayFps
@@ -267,8 +270,11 @@ class FileBrowser(Window):
                         # Load the new image in the viewer window
                         self.loadFunction(sprite.path)
 
-                        # Close this window
-                        self.close()
+                        # Hide this window
+                        self.set_visible(False)
+
+                        # Activate teh viewer window
+                        self.viewerWindow.activate()
 
                         # Exit the loop
                         break

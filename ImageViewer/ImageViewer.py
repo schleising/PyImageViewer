@@ -505,7 +505,18 @@ class ImageViewer(pyglet.window.Window):
                 return
         elif symbol == key.UP:
             # Open the file browser window with the current image parent path
-            self.fileBrowser = FileBrowser(self.images[self.currentImageIndex], self, self.SetupImagePathAndLoadImage)
+            if not self.fileBrowser:
+                self.fileBrowser = FileBrowser(self.images[self.currentImageIndex], self, self.SetupImagePathAndLoadImage)
+            else:
+                self.fileBrowser.set_visible(True)
+
+            # Ensure the mouse isn't hidden
+            self._ShowMouse(False)
+
+            # Hide this window
+            self.set_visible(False)
+
+            # Exit this handler
             return
         elif symbol == key.F:
             self.displayFps = not self.displayFps
@@ -769,6 +780,13 @@ class ImageViewer(pyglet.window.Window):
             if self.rectangle:
                 self.rectangle.delete()
                 self.rectangle = None
+
+    def on_activate(self):
+        # Show this window
+        self.set_visible(True)
+
+        # Call on draw when this window is activated
+        self.on_draw()
 
 def main() -> None:
     # For testing if this is run standalone open the test images
