@@ -8,7 +8,7 @@ import time
 from typing import Optional
 
 import pyglet
-from pyglet.window import key
+from pyglet.window import key, FPSDisplay
 from pyglet.sprite import Sprite
 from pyglet.image import ImageData, ImageDataRegion
 
@@ -36,6 +36,8 @@ class ImageViewer(pyglet.window.Window):
         # Sprite containing the old image when scrolling in the new one
         self.oldSprite: Optional[Sprite] = None
 
+        self.fpsDisplay = FPSDisplay(self)
+
         # Set safe defaults
         self.xStartDrag = 0
         self.yStartDrag = 0
@@ -62,6 +64,7 @@ class ImageViewer(pyglet.window.Window):
         self.p2Circle: Optional[pyglet.shapes.Circle] = None
         self.draggingP1Circle = False
         self.draggingP2Circle = False
+        self.displayFps = False
 
         # Setup ordered groups to ensure shapes are drawn on top of the image
         self.background = pyglet.graphics.OrderedGroup(0)
@@ -476,6 +479,10 @@ class ImageViewer(pyglet.window.Window):
             # Draw the batch
             self.batch.draw()
 
+            # Draw the frames per second if enabled
+            if self.displayFps:
+                self.fpsDisplay.draw()
+
     def on_key_press(self, symbol, modifiers):
         if symbol == key.ESCAPE:
             # Quit the application
@@ -491,6 +498,9 @@ class ImageViewer(pyglet.window.Window):
                 # If the Bezier curve is not shown, create and show it
                 self._ShowBezierCurve()
                 return
+        elif symbol == key.F:
+            self.displayFps = not self.displayFps
+            return
         elif self.direction is None:
             if symbol == key.RIGHT:
                 # Crop the image before setting the scroll direction
