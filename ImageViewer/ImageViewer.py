@@ -376,10 +376,10 @@ class ImageViewer(pyglet.window.Window):
 
         # Create the Bezier curve
         self.bezierCurve = [pyglet.shapes.Line(
-            x1 * self.screenWidth,
-            y1 * self.screenHeight,
-            x2 * self.screenWidth,
-            y2 * self.screenHeight,
+            x1 * (self.screenWidth / 2) + (self.screenWidth / 4),
+            y1 * (self.screenHeight / 2) + (self.screenHeight / 4),
+            x2 * (self.screenWidth / 2) + (self.screenWidth / 4),
+            y2 * (self.screenHeight / 2) + (self.screenHeight / 4),
             batch=self.batch,
             group=self.foreground,
             color=(255, 0, 0),
@@ -388,10 +388,10 @@ class ImageViewer(pyglet.window.Window):
 
         # Create a line showing the P0 -> P1 control line
         self.p0p1Line = pyglet.shapes.Line(
-            self.p0[0] * self.screenWidth,
-            self.p0[1] * self.screenHeight,
-            self.p1[0] * self.screenWidth,
-            self.p1[1] * self.screenHeight,
+            self.p0[0] * (self.screenWidth / 2) + (self.screenWidth / 4),
+            self.p0[1] * (self.screenHeight / 2) + (self.screenHeight / 4),
+            self.p1[0] * (self.screenWidth / 2) + (self.screenWidth / 4),
+            self.p1[1] * (self.screenHeight / 2) + (self.screenHeight / 4),
             batch=self.batch,
             group=self.foreground,
             color=(0, 255, 0),
@@ -400,8 +400,8 @@ class ImageViewer(pyglet.window.Window):
 
         # Create a circle for P1
         self.p1Circle = pyglet.shapes.Circle(
-            self.p1[0] * self.screenWidth,
-            self.p1[1] * self.screenHeight,
+            self.p1[0] * (self.screenWidth / 2) + (self.screenWidth / 4),
+            self.p1[1] * (self.screenHeight / 2) + (self.screenHeight / 4),
             radius=10,
             color=(0, 255, 0),
             batch=self.batch,
@@ -410,10 +410,10 @@ class ImageViewer(pyglet.window.Window):
 
         # Create a line showing the P2 -> P3 control line
         self.p2p3Line = pyglet.shapes.Line(
-            self.p2[0] * self.screenWidth,
-            self.p2[1] * self.screenHeight,
-            self.p3[0] * self.screenWidth,
-            self.p3[1] * self.screenHeight,
+            self.p2[0] * (self.screenWidth / 2) + (self.screenWidth / 4),
+            self.p2[1] * (self.screenHeight / 2) + (self.screenHeight / 4),
+            self.p3[0] * (self.screenWidth / 2) + (self.screenWidth / 4),
+            self.p3[1] * (self.screenHeight / 2) + (self.screenHeight / 4),
             batch=self.batch,
             group=self.foreground,
             color=(0, 0, 255),
@@ -422,8 +422,8 @@ class ImageViewer(pyglet.window.Window):
 
         # Create a circle for P2
         self.p2Circle = pyglet.shapes.Circle(
-            self.p2[0] * self.screenWidth,
-            self.p2[1] * self.screenHeight,
+            self.p2[0] * (self.screenWidth / 2) + (self.screenWidth / 4),
+            self.p2[1] * (self.screenHeight / 2) + (self.screenHeight / 4),
             radius=10,
             color=(0, 0, 255),
             batch=self.batch,
@@ -713,7 +713,8 @@ class ImageViewer(pyglet.window.Window):
             self.p1Circle.position = self._ConstrainToScreen(self.p1Circle.x, self.p1Circle.y)
 
             # Work out the new P1 control point position
-            self.p1 = self.p1Circle.x / self.screenWidth, self.p1Circle.y / self.screenHeight
+            self.p1 = (2 * (((self.p1Circle.x - self.screenWidth / 4) / self.screenWidth)), 
+                2 * (((self.p1Circle.y - self.screenHeight / 4) / self.screenHeight)))
 
             # Update the Bezier curve
             self._CreateBezierCurve()
@@ -732,7 +733,8 @@ class ImageViewer(pyglet.window.Window):
             self.p2Circle.position = self._ConstrainToScreen(self.p2Circle.x, self.p2Circle.y)
 
             # Work out the new P1 control point position
-            self.p2 = self.p2Circle.x / self.screenWidth, self.p2Circle.y / self.screenHeight
+            self.p2 = (2 * (((self.p2Circle.x - self.screenWidth / 4) / self.screenWidth)),
+                2 * (((self.p2Circle.y - self.screenHeight / 4) / self.screenHeight)))
 
             # Update the Bezier curve
             self._CreateBezierCurve()
