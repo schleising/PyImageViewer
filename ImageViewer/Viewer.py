@@ -19,10 +19,10 @@ class Direction(Enum):
     Forward = auto()
     Back = auto()
 
-class ImageViewer(pyglet.window.Window):
+class Viewer(pyglet.window.Window):
     def __init__(self, inputPath: Path) -> None:
         # Call base class init
-        super(ImageViewer, self).__init__()
+        super(Viewer, self).__init__()
 
         # Add an event logger
         # event_logger = event.WindowEventLogger()
@@ -792,7 +792,7 @@ def main() -> None:
     # For testing if this is run standalone open the test images
     inputPath = Path.home() / 'Pictures/Test Images'
 
-    ImageViewer(inputPath)
+    Viewer(inputPath)
 
 if __name__ == '__main__':
     main()

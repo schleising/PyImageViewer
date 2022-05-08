@@ -47,11 +47,11 @@ def main() -> None:
         sys.exit()
 
     # Only import ImageViewer once the TkInter file dialog has closed
-    from ImageViewer.ImageViewer import ImageViewer
+    from ImageViewer.Viewer import Viewer
 
     # Start the image viewer
     logging.info('Starting viewer')
-    ImageViewer(imagePath)
+    Viewer(imagePath)
 
 if __name__ == '__main__':
     main()
