@@ -2,10 +2,10 @@ import logging
 from pathlib import Path
 from typing import Callable, Optional
 
+import pyglet
 from pyglet.window import key, Window, FPSDisplay
 from pyglet.sprite import Sprite
 from pyglet.graphics import Batch
-from pyglet.canvas import Display
 from pyglet.image import load
 from pyglet.shapes import Line
 from pyglet.text import Label
@@ -31,11 +31,11 @@ class FileBrowser(Window):
         # Set the viewer window so that we can control it before closing this one
         self.viewerWindow = viewerWindow
 
-        # Stop the viewer window being fullscreen so it doesn't overwrite this one
-        self.viewerWindow.set_fullscreen(False)
-
         # Set the load function so we can lod the newly chosen image in the viewer
         self.loadFunction: Callable[[Path], None] = loadFunction
+
+        # Indicate whether the image viewer has been initialised
+        self.imageViewerInitialised = False
 
         # Set the path of the folder image
         self.folderPath = Path('ImageViewer/Resources/285658_blue_folder_icon.png')
@@ -45,10 +45,6 @@ class FileBrowser(Window):
 
         # Get the screen width and height
         self.set_fullscreen(True)
-
-        # Get the screen width and height after setting it to full screen
-        self.screenWidth = self.width
-        self.screenHeight = self.height
 
         # Controls for vertical scrolling to ensure the scroll remains in bounds
         self.scrollableAmount = 0
@@ -109,7 +105,7 @@ class FileBrowser(Window):
             self.folderNames.clear()
 
         # Work out the full thumbnail size (this is the size reserved for image and name)
-        thumbnailSize = self.screenWidth / self.thumbnailsPerRow
+        thumbnailSize = self.width / self.thumbnailsPerRow
 
         # Work out the image size (thumbnail minus margin top, bottom, left and right)
         imageSize = thumbnailSize - (self.marginPix * 2)
@@ -155,7 +151,7 @@ class FileBrowser(Window):
 
             # Get the x and y of the thumbnail space
             xStart = thumbnailSize * (count % self.thumbnailsPerRow)
-            yStart = self.screenHeight - (thumbnailSize * ((count // self.thumbnailsPerRow) + 1))
+            yStart = self.height - (thumbnailSize * ((count // self.thumbnailsPerRow) + 1))
 
             # Work out how far we have to shift the image to centre it in the thumbnail space
             xShift = (imageSize - sprite.width) // 2
@@ -195,14 +191,21 @@ class FileBrowser(Window):
             # Log that the browser window is closing
             logging.info('Closing File Browser')
 
-            # Set the viewer window back to full screen
-            self.viewerWindow.set_fullscreen(True)
+            if self.imageViewerInitialised:
+                # Set the viewer window back to full screen
+                self.viewerWindow.set_fullscreen(True)
 
-            # Activate the viewer window to ensure it has focus
-            self.viewerWindow.activate()
+                # Activate the viewer window to ensure it has focus
+                self.viewerWindow.activate()
 
-            # Hide this browser window
-            self.set_visible(False)
+                # Show the viewer windoes
+                self.viewerWindow.set_visible(True)
+
+                # Hide this browser window
+                self.set_visible(False)
+            else:
+                # If the viewer was never initialised, exit the application
+                pyglet.app.exit()
         elif symbol == key.F:
             # Toggle display of the FPS
             self.displayFps = not self.displayFps
@@ -266,6 +269,9 @@ class FileBrowser(Window):
 
                         # Set the viewer back to full screen
                         self.viewerWindow.set_fullscreen(True)
+
+                        # Show the viewer window
+                        self.viewerWindow.set_visible(True)
 
                         # Load the new image in the viewer window
                         self.loadFunction(sprite.path)
