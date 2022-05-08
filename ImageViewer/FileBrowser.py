@@ -86,6 +86,9 @@ class FileBrowser(Window):
         folderList: list[Path] = []
         fileList: list[Path] = []
 
+        # Reset the scrolling
+        self.currentScroll = 0
+
         # Clear the thumbnails down if they exist
         if self.thumbnailList:
             for thumbnail in self.thumbnailList:
