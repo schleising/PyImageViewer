@@ -11,6 +11,7 @@ import pyglet
 from pyglet.window import key, FPSDisplay
 from pyglet.sprite import Sprite
 from pyglet.image import ImageData, ImageDataRegion
+from ImageViewer.FileBrowser import FileBrowser
 
 from ImageViewer.FileTypes import supportedExtensions
 
@@ -65,7 +66,7 @@ class ImageViewer(pyglet.window.Window):
         self.draggingP1Circle = False
         self.draggingP2Circle = False
         self.displayFps = False
-
+        self.fileBrowser: Optional[FileBrowser] = None
         # Setup ordered groups to ensure shapes are drawn on top of the image
         self.background = pyglet.graphics.OrderedGroup(0)
         self.foreground = pyglet.graphics.OrderedGroup(1)
@@ -73,6 +74,24 @@ class ImageViewer(pyglet.window.Window):
         # Create a batch drawing context
         self.batch = pyglet.graphics.Batch()
 
+        # Set window to full screen
+        self.set_fullscreen(True)
+
+        # Get the screen width and height
+        self.screenWidth = self.width
+        self.screenHeight = self.height
+
+        # Create the initial Bezier curve
+        self._CreateBezierCurve()
+
+        # Load the image
+        self.SetupImagePathAndLoadImage(inputPath)
+
+        # Run the app
+        logging.info('Starting Pyglet mainloop')
+        pyglet.app.run()
+
+    def SetupImagePathAndLoadImage(self, inputPath: Path) -> None:
         # Check for a file on the command line
         if inputPath.is_file():
             # Get the parent folder
@@ -93,22 +112,8 @@ class ImageViewer(pyglet.window.Window):
         # Set the maximum image index
         self.maxImageIndex = len(self.images) - 1
 
-        # Get the screen width and height
-        self.screenWidth = pyglet.canvas.Display().get_default_screen().width
-        self.screenHeight = pyglet.canvas.Display().get_default_screen().height
-
-        # Create the initial Bezier curve
-        self._CreateBezierCurve()
-
-        # Set window to full screen
-        self.set_fullscreen(True)
-
         # Load the image
         self._LoadImage()
-
-        # Run the app
-        logging.info('Starting Pyglet mainloop')
-        pyglet.app.run()
 
     # Function to return a list of Paths pointing at images in the current folder
     def _GetImagePathList(self, imagePath: Path) -> list[Path]:
@@ -498,6 +503,10 @@ class ImageViewer(pyglet.window.Window):
                 # If the Bezier curve is not shown, create and show it
                 self._ShowBezierCurve()
                 return
+        elif symbol == key.UP:
+            # Open the file browser window with the current image parent path
+            self.fileBrowser = FileBrowser(self.images[self.currentImageIndex], self, self.SetupImagePathAndLoadImage)
+            return
         elif symbol == key.F:
             self.displayFps = not self.displayFps
             return
