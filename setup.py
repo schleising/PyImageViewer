@@ -39,7 +39,7 @@ Plist = dict(
     )
 
 OPTIONS = {
-    # 'argv_emulation': True,
+    'argv_emulation': True,
     'iconfile': 'ImageViewer/Resources/ImageViewer.icns',
     'plist': Plist,
 }
