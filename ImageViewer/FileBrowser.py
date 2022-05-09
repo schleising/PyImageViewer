@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 from typing import Callable, Optional
+import asyncio
 
 import pyglet
 from pyglet.window import key, Window, FPSDisplay
@@ -9,6 +10,8 @@ from pyglet.graphics import Batch
 from pyglet.image import load, ImageData
 from pyglet.shapes import Line
 from pyglet.text import Label
+
+from PIL import Image
 
 from ImageViewer.FileTypes import supportedExtensions
 
@@ -64,12 +67,21 @@ class Container():
     def _updateSprite(self) -> None:
         if self.visible():
             if not self.imageLoaded:
-                if self._path.is_dir():
-                    self.sprite.image = load(self.folderPath)
-                else:
-                    self.sprite.image = load(self._path)
+                # Show that the image has been loaded
+                self.imageLoaded = True
 
+                if self._path.is_dir():
+                    fullImage = Image.open(self.folderPath)
+                else:
+                    fullImage = Image.open(self._path)
+
+                format = fullImage.mode
+                formatLength = len(format) if format else 4
+                fullImage.thumbnail((self.containerSize, self.containerSize))
+                rawImage = fullImage.tobytes()
+                self.sprite.image = ImageData(fullImage.width, fullImage.height, format, rawImage, -fullImage.width * formatLength)
                 # Work out the image size (thumbnail minus margin top, bottom, left and right)
+
                 imageSize = self.containerSize - (self.marginPix * 2)
 
                 # Scale the image to fit within the image size
@@ -82,12 +94,10 @@ class Container():
                 # Calculate the resulting x and y of the bottom left of the image
                 self.sprite.x = self.x + self.marginPix + xShift
                 self.sprite.y = self.y + self.marginPix + yShift
-
-                # Show that the image has been loaded
-                self.imageLoaded = True
-        else:
-            self.sprite.image = self.defaultImage
-            self.imageLoaded = False
+        # else:
+        #     if self.imageLoaded:
+        #         self.sprite.image = self.defaultImage
+        #         self.imageLoaded = False
 
     @property
     def x(self) -> int:
@@ -315,9 +325,9 @@ class FileBrowser(Window):
                 scroll = self.scrollableAmount - self.currentScroll
                 self.currentScroll = self.scrollableAmount
 
-            # Move the sprites
-            for thumbnail in self.thumbnailList:
-                thumbnail.y += scroll
+            # asyncio.run(self.scrollThumbnails(scroll))
+            for thumbail in self.thumbnailList:
+                thumbail.y += scroll
 
             # Move the gridlines
             for gridLine in self.gridLines:
@@ -327,6 +337,16 @@ class FileBrowser(Window):
             # Move the folder names
             for folderName in self.folderNames:
                 folderName.y += scroll
+
+    async def scrollThumbnails(self, scroll: int) -> None:
+            # Move the sprites
+            loadTasks = [asyncio.create_task(self.updateThumbnailX(thumbnail, scroll)) for thumbnail in self.thumbnailList]
+            for task in loadTasks:
+                await task
+
+    async def updateThumbnailX(self, thumbnail: Container, scroll: int) -> None:
+        thumbnail.y += scroll
+
 
     def on_mouse_press(self, x, y, button, modifiers):
         # Iterate through the sprites
