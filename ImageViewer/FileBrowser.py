@@ -6,22 +6,111 @@ import pyglet
 from pyglet.window import key, Window, FPSDisplay
 from pyglet.sprite import Sprite
 from pyglet.graphics import Batch
-from pyglet.image import load
+from pyglet.image import load, ImageData
 from pyglet.shapes import Line
 from pyglet.text import Label
 
 from ImageViewer.FileTypes import supportedExtensions
 
-class ThumbnailSprite(Sprite):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+class Container():
+    # Load the default image
+    defaultImage: ImageData = load(Path('ImageViewer/Resources/1x1_#000000ff.png'))
 
+    def __init__(self, x: int, y: int, screenHeight: int, batch: Batch):
         # The path this thumbnail represents
-        self.path: Optional[Path] = None
+        self._path: Path = Path()
+
+        # The size of the container
+        self.containerSize: int = 0
+
+        # Set the path of the folder image
+        self.folderPath = Path('ImageViewer/Resources/285658_blue_folder_icon.png')
+
+        # Sprite in this container
+        self.sprite = Sprite(self.defaultImage, batch=batch)
+
+        # Margin around thumbnails
+        self.marginPix = 20
+
+        # x position
+        self._x = x
+
+        # y position
+        self._y = y
+
+        # Set the screen height
+        self.screenHeight = screenHeight
+
+        # Check whether the image has been loaded
+        self.imageLoaded = False
+
+    def visible(self) -> bool:
+        # Returns True if any part of the sprite is on screen
+        return (self._y >= 0 and self._y < self.screenHeight) or (self._y + self.containerSize >= 0 and self._y + self.containerSize < self.screenHeight)
 
     def InSprite(self, x: int, y: int) -> bool:
-        # Return true if the click was inside the image bounds
-        return x >= self.x and y >= self.y and x <= self.x + self.width and y <= self.y + self.height
+        # Return true if the click was inside the image (not container) bounds
+        return x >= self.sprite.x and y >= self.sprite.y and x <= self.sprite.x + self.sprite.width and y <= self.sprite.y + self.sprite.height
+
+    @property
+    def path(self) -> Path:
+        return self._path
+
+    @path.setter
+    def path(self, path: Path) -> None:
+        self._path = path
+        self._updateSprite()
+
+    def _updateSprite(self) -> None:
+        if self.visible():
+            if not self.imageLoaded:
+                if self._path.is_dir():
+                    self.sprite.image = load(self.folderPath)
+                else:
+                    self.sprite.image = load(self._path)
+
+                # Work out the image size (thumbnail minus margin top, bottom, left and right)
+                imageSize = self.containerSize - (self.marginPix * 2)
+
+                # Scale the image to fit within the image size
+                self.sprite.scale = min(imageSize / self.sprite.image.width, imageSize / self.sprite.image.height)
+
+                # Work out how far we have to shift the image to centre it in the thumbnail space
+                xShift = (imageSize - self.sprite.width) // 2
+                yShift = (imageSize - self.sprite.height) // 2
+
+                # Calculate the resulting x and y of the bottom left of the image
+                self.sprite.x = self.x + self.marginPix + xShift
+                self.sprite.y = self.y + self.marginPix + yShift
+
+                # Show that the image has been loaded
+                self.imageLoaded = True
+        else:
+            self.sprite.image = self.defaultImage
+            self.imageLoaded = False
+
+    @property
+    def x(self) -> int:
+        return self._x
+
+    @x.setter
+    def x(self, x: int) -> None:
+        self.sprite.x += x - self._x
+        self._x = x
+        self._updateSprite()
+
+    @property
+    def y(self) -> int:
+        return self._y
+
+    @y.setter
+    def y(self, y: int) -> None:
+        self.sprite.y += y - self._y
+        self._y = y
+        self._updateSprite()
+
+    def delete(self) -> None:
+        self.sprite.delete()
 
 class FileBrowser(Window):
     def __init__(self, inputPath: Path, viewerWindow: Window, loadFunction: Callable[[Path], None]) -> None:
@@ -36,9 +125,6 @@ class FileBrowser(Window):
 
         # Indicate whether the image viewer has been initialised
         self.imageViewerInitialised = False
-
-        # Set the path of the folder image
-        self.folderPath = Path('ImageViewer/Resources/285658_blue_folder_icon.png')
 
         # Set the path of the input, getting the parent folder if this is actually a file
         self.inputPath = inputPath.parent if inputPath.is_file() else inputPath
@@ -57,7 +143,7 @@ class FileBrowser(Window):
         self.folderNames: list[Label] = []
 
         # Set to True to draw gridlines to help layout
-        self.drawGridLines = False
+        self.drawGridLines = True
 
         # The layout gridlines
         self.gridLines: list[Line] = []
@@ -76,7 +162,7 @@ class FileBrowser(Window):
         self.thumbnailsPerRow = 6
 
         # The list of thumbnails
-        self.thumbnailList: list[ThumbnailSprite] = []
+        self.thumbnailList: list[Container] = []
 
         # Read the files and folders in this folder and create thumbnails from them
         self._GetThumbnails()
@@ -110,9 +196,6 @@ class FileBrowser(Window):
         # Work out the full thumbnail size (this is the size reserved for image and name)
         thumbnailSize = self.width / self.thumbnailsPerRow
 
-        # Work out the image size (thumbnail minus margin top, bottom, left and right)
-        imageSize = thumbnailSize - (self.marginPix * 2)
-
         # Iterate through the files in the folder
         for path in self.inputPath.iterdir():
             # Ignore files starting with a . as they are hidden
@@ -136,39 +219,24 @@ class FileBrowser(Window):
 
         # Iterate over the full list of paths
         for count, path in enumerate(fullPathList):
-            if path.is_dir():
-                # If this is a folder then the thumbnail is a folder image
-                image = load(self.folderPath)
-            else:
-                # If this is a file then the thumbnail is the image itself
-                image = load(path)
-
-            # Create a sprite from the image and add it to the drawing batch
-            sprite = ThumbnailSprite(image, batch=self.batch)
-
-            # Set the path of this sprite to the image or folder path
-            sprite.path = path
-
-            # Scale the image to fit within the image size
-            sprite.scale = min(imageSize / image.width, imageSize / image.height)
-
             # Get the x and y of the thumbnail space
             xStart = thumbnailSize * (count % self.thumbnailsPerRow)
             yStart = self.height - (thumbnailSize * ((count // self.thumbnailsPerRow) + 1))
 
-            # Work out how far we have to shift the image to centre it in the thumbnail space
-            xShift = (imageSize - sprite.width) // 2
-            yShift = (imageSize - sprite.height) // 2
+            # Create a sprite from the image and add it to the drawing batch
+            container = Container(xStart, yStart, self.height, self.batch)
 
-            # Calculate the resulting x and y of the bottom left of the image
-            sprite.x = xStart + self.marginPix + xShift
-            sprite.y = yStart + self.marginPix + yShift
+            # Tell the sprite how big the container is
+            container.containerSize = thumbnailSize
+
+            # Add the path of the image or folder
+            container.path = path
 
             # Append the sprite to the list
-            self.thumbnailList.append(sprite)
+            self.thumbnailList.append(container)
 
             # Work out how much we are allowed to scroll this view vertically
-            self.scrollableAmount = abs(sprite.y) if sprite.y < 0 else 0
+            self.scrollableAmount = abs(container.y) if container.y < 0 else 0
 
             if self.drawGridLines:
                 # If we are drawing gridlines, add them to the gridline list
@@ -248,8 +316,8 @@ class FileBrowser(Window):
                 self.currentScroll = self.scrollableAmount
 
             # Move the sprites
-            for sprite in self.thumbnailList:
-                sprite.y += scroll
+            for thumbnail in self.thumbnailList:
+                thumbnail.y += scroll
 
             # Move the gridlines
             for gridLine in self.gridLines:
