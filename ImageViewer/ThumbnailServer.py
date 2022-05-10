@@ -6,6 +6,8 @@ from typing import Optional
 
 from PIL import Image
 
+from pyglet.image import ImageData
+
 class ThumbnailServer:
     def __init__(self) -> None:
         self.process = mp.Process(target=self.mainLoop)
@@ -28,7 +30,12 @@ class ThumbnailServer:
         fullImage = Image.open(imagePath)
         fullImage.thumbnail((containerSize, containerSize))
 
+        mode = fullImage.mode
+        formatLength = len(mode) if mode else 4
+        rawImage = fullImage.tobytes()
+        image = ImageData(fullImage.width, fullImage.height, mode, rawImage, -fullImage.width * formatLength)
+
         # rawImage = fullImage.tobytes()
         lock.acquire()
-        self.parentConn.send((path, fullImage))
+        self.parentConn.send((path, image))
         lock.release()

@@ -59,13 +59,9 @@ class Container():
         # Set the lock
         self.lock = lock
 
-    def ReceiveImage(self, fullImage: Image) -> None:
-        mode = fullImage.mode
-        formatLength = len(mode) if mode else 4
-        rawImage = fullImage.tobytes()
-        self.sprite.image = ImageData(fullImage.width, fullImage.height, mode, rawImage, -fullImage.width * formatLength)
+    def ReceiveImage(self, image: ImageData) -> None:
         # fullImage.show()
-
+        self.sprite.image = image
         # Work out the image size (thumbnail minus margin top, bottom, left and right)
         imageSize = self.containerSize - (self.marginPix * 2)
 
@@ -186,7 +182,7 @@ class FileBrowser(Window):
         self.folderNames: list[Label] = []
 
         # Set to True to draw gridlines to help layout
-        self.drawGridLines = True
+        self.drawGridLines = False
 
         # The layout gridlines
         self.gridLines: list[Line] = []
@@ -208,7 +204,7 @@ class FileBrowser(Window):
         self.thumbnailList: dict[Path, Container] = {}
 
         # Start a timed operation to receive images
-        pyglet.clock.schedule_interval(self.ReceiveImages, 1 / 100)
+        pyglet.clock.schedule_interval(self.ReceiveImages, 1 / 50)
 
         # Read the files and folders in this folder and create thumbnails from them
         self._GetThumbnails()
