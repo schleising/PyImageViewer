@@ -204,7 +204,7 @@ class FileBrowser(Window):
         self.thumbnailList: dict[Path, Container] = {}
 
         # Start a timed operation to receive images
-        pyglet.clock.schedule_interval(self.ReceiveImages, 1 / 50)
+        pyglet.clock.schedule_interval(self.ReceiveImages, 1 / 60)
 
         # Read the files and folders in this folder and create thumbnails from them
         self._GetThumbnails()
