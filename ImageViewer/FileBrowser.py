@@ -1,7 +1,12 @@
 import logging
 from pathlib import Path
+from time import sleep
 from typing import Callable, Optional
+from multiprocessing import Process, Pipe, Lock
+from multiprocessing.connection import Connection
 import asyncio
+
+from threading import Thread
 
 import pyglet
 from pyglet.window import key, Window, FPSDisplay
@@ -11,15 +16,16 @@ from pyglet.image import load, ImageData
 from pyglet.shapes import Line
 from pyglet.text import Label
 
-from PIL import Image
+from PIL.Image import Image
 
 from ImageViewer.FileTypes import supportedExtensions
+from ImageViewer.ThumbnailServer import ThumbnailServer
 
 class Container():
     # Load the default image
     defaultImage: ImageData = load(Path('ImageViewer/Resources/1x1_#000000ff.png'))
 
-    def __init__(self, x: int, y: int, screenHeight: int, batch: Batch):
+    def __init__(self, x: int, y: int, screenHeight: int, batch: Batch, childConn: Connection, lock):
         # The path this thumbnail represents
         self._path: Path = Path()
 
@@ -47,6 +53,35 @@ class Container():
         # Check whether the image has been loaded
         self.imageLoaded = False
 
+        # Request Queue
+        self.childConn = childConn
+
+        # Set the lock
+        self.lock = lock
+
+    def ReceiveImage(self, fullImage: Image) -> None:
+        mode = fullImage.mode
+        formatLength = len(mode) if mode else 4
+        rawImage = fullImage.tobytes()
+        self.sprite.image = ImageData(fullImage.width, fullImage.height, mode, rawImage, -fullImage.width * formatLength)
+        # fullImage.show()
+
+        # Work out the image size (thumbnail minus margin top, bottom, left and right)
+        imageSize = self.containerSize - (self.marginPix * 2)
+
+        # Scale the image to fit within the image size
+        # self.sprite.scale = min(imageSize / self.sprite.image.width, imageSize / self.sprite.image.height)
+
+        # Work out how far we have to shift the image to centre it in the thumbnail space
+        xShift = (imageSize - self.sprite.width) // 2
+        yShift = (imageSize - self.sprite.height) // 2
+
+        # Calculate the resulting x and y of the bottom left of the image
+        self.sprite.x = self.x + self.marginPix + xShift
+        self.sprite.y = self.y + self.marginPix + yShift
+        self.Running = False
+        # sleep(1 / 50)
+
     def visible(self) -> bool:
         # Returns True if any part of the sprite is on screen
         return (self._y >= 0 and self._y < self.screenHeight) or (self._y + self.containerSize >= 0 and self._y + self.containerSize < self.screenHeight)
@@ -71,29 +106,22 @@ class Container():
                 self.imageLoaded = True
 
                 if self._path.is_dir():
-                    fullImage = Image.open(self.folderPath)
+                    path = self.folderPath
                 else:
-                    fullImage = Image.open(self._path)
+                    path = self._path
 
-                format = fullImage.mode
-                formatLength = len(format) if format else 4
-                fullImage.thumbnail((self.containerSize, self.containerSize))
-                rawImage = fullImage.tobytes()
-                self.sprite.image = ImageData(fullImage.width, fullImage.height, format, rawImage, -fullImage.width * formatLength)
+                # Create a process to receive the loaded images
+                # self.imageProcess = Thread(target=self.ReceiveImage, args=(self,))
+                self.Running = True
+                # self.imageProcess.start()
+
                 # Work out the image size (thumbnail minus margin top, bottom, left and right)
-
                 imageSize = self.containerSize - (self.marginPix * 2)
 
-                # Scale the image to fit within the image size
-                self.sprite.scale = min(imageSize / self.sprite.image.width, imageSize / self.sprite.image.height)
+                self.lock.acquire()
+                self.childConn.send((path, self._path, imageSize))
+                self.lock.release()
 
-                # Work out how far we have to shift the image to centre it in the thumbnail space
-                xShift = (imageSize - self.sprite.width) // 2
-                yShift = (imageSize - self.sprite.height) // 2
-
-                # Calculate the resulting x and y of the bottom left of the image
-                self.sprite.x = self.x + self.marginPix + xShift
-                self.sprite.y = self.y + self.marginPix + yShift
         # else:
         #     if self.imageLoaded:
         #         self.sprite.image = self.defaultImage
@@ -107,7 +135,7 @@ class Container():
     def x(self, x: int) -> None:
         self.sprite.x += x - self._x
         self._x = x
-        self._updateSprite()
+        # self._updateSprite()
 
     @property
     def y(self) -> int:
@@ -142,6 +170,11 @@ class FileBrowser(Window):
         # Get the screen width and height
         self.set_fullscreen(True)
 
+        # Create the thumbnail server and get the request queue
+        self.thumbnailServer = ThumbnailServer()
+        self.childConn = self.thumbnailServer.childConn
+        self.pipeLock = Lock()
+
         # Controls for vertical scrolling to ensure the scroll remains in bounds
         self.scrollableAmount = 0
         self.currentScroll = 0
@@ -172,7 +205,10 @@ class FileBrowser(Window):
         self.thumbnailsPerRow = 6
 
         # The list of thumbnails
-        self.thumbnailList: list[Container] = []
+        self.thumbnailList: dict[Path, Container] = {}
+
+        # Start a timed operation to receive images
+        pyglet.clock.schedule_interval(self.ReceiveImages, 1 / 100)
 
         # Read the files and folders in this folder and create thumbnails from them
         self._GetThumbnails()
@@ -187,7 +223,7 @@ class FileBrowser(Window):
 
         # Clear the thumbnails down if they exist
         if self.thumbnailList:
-            for thumbnail in self.thumbnailList:
+            for thumbnail in self.thumbnailList.values():
                 thumbnail.delete()
             self.thumbnailList.clear()
 
@@ -234,7 +270,7 @@ class FileBrowser(Window):
             yStart = self.height - (thumbnailSize * ((count // self.thumbnailsPerRow) + 1))
 
             # Create a sprite from the image and add it to the drawing batch
-            container = Container(xStart, yStart, self.height, self.batch)
+            container = Container(xStart, yStart, self.height, self.batch, self.childConn, self.pipeLock)
 
             # Tell the sprite how big the container is
             container.containerSize = thumbnailSize
@@ -243,7 +279,7 @@ class FileBrowser(Window):
             container.path = path
 
             # Append the sprite to the list
-            self.thumbnailList.append(container)
+            self.thumbnailList[path] = container
 
             # Work out how much we are allowed to scroll this view vertically
             self.scrollableAmount = abs(container.y) if container.y < 0 else 0
@@ -291,7 +327,19 @@ class FileBrowser(Window):
             # Toggle display of the FPS
             self.displayFps = not self.displayFps
 
+    def ReceiveImages(self, dt) -> None:
+        # print('Rec')
+        while self.childConn.poll():
+            self.pipeLock.acquire()
+            path, fullImage = self.childConn.recv()
+            self.pipeLock.release()
+
+            if path in self.thumbnailList:
+                self.thumbnailList[path].ReceiveImage(fullImage)
+
     def on_draw(self):
+        # self.ReceiveImages()
+
         # Clear the display
         self.clear()
 
@@ -326,7 +374,7 @@ class FileBrowser(Window):
                 self.currentScroll = self.scrollableAmount
 
             # asyncio.run(self.scrollThumbnails(scroll))
-            for thumbail in self.thumbnailList:
+            for thumbail in self.thumbnailList.values():
                 thumbail.y += scroll
 
             # Move the gridlines
@@ -338,19 +386,9 @@ class FileBrowser(Window):
             for folderName in self.folderNames:
                 folderName.y += scroll
 
-    async def scrollThumbnails(self, scroll: int) -> None:
-            # Move the sprites
-            loadTasks = [asyncio.create_task(self.updateThumbnailX(thumbnail, scroll)) for thumbnail in self.thumbnailList]
-            for task in loadTasks:
-                await task
-
-    async def updateThumbnailX(self, thumbnail: Container, scroll: int) -> None:
-        thumbnail.y += scroll
-
-
     def on_mouse_press(self, x, y, button, modifiers):
         # Iterate through the sprites
-        for sprite in self.thumbnailList:
+        for sprite in self.thumbnailList.values():
             # Get each sprite to check whether it was the target of the mouse click
             if sprite.InSprite(x, y):
                 if sprite.path:
