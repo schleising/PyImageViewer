@@ -202,7 +202,7 @@ class FileBrowser(Window):
         self.batch = Batch()
 
         # Constant defining the number of thnumbnails in a row
-        self.thumbnailsPerRow = 6
+        self.thumbnailsPerRow = 8
 
         # The dict of thumbnails indexed by Path
         self.thumbnailDict: dict[Path, Container] = {}
