@@ -1,12 +1,8 @@
 import logging
 from pathlib import Path
-from time import sleep
-from typing import Callable, Optional
-from multiprocessing import Process, Pipe, Lock
+from multiprocessing import Lock
 from multiprocessing.connection import Connection
-import asyncio
-
-from threading import Thread
+from typing import Callable
 
 import pyglet
 from pyglet.window import key, Window, FPSDisplay
@@ -15,8 +11,6 @@ from pyglet.graphics import Batch
 from pyglet.image import load, ImageData
 from pyglet.shapes import Line
 from pyglet.text import Label
-
-from PIL.Image import Image
 
 from ImageViewer.FileTypes import supportedExtensions
 from ImageViewer.ThumbnailServer import ThumbnailServer
@@ -53,20 +47,18 @@ class Container():
         # Check whether the image has been loaded
         self.imageLoaded = False
 
-        # Request Queue
+        # Pipe to send image load requests
         self.childConn = childConn
 
-        # Set the lock
+        # Lock for the pipe
         self.lock = lock
 
     def ReceiveImage(self, image: ImageData) -> None:
-        # fullImage.show()
+        # Set the sprites image to the one recieved from the thumbnail server process
         self.sprite.image = image
+
         # Work out the image size (thumbnail minus margin top, bottom, left and right)
         imageSize = self.containerSize - (self.marginPix * 2)
-
-        # Scale the image to fit within the image size
-        # self.sprite.scale = min(imageSize / self.sprite.image.width, imageSize / self.sprite.image.height)
 
         # Work out how far we have to shift the image to centre it in the thumbnail space
         xShift = (imageSize - self.sprite.width) // 2
@@ -75,8 +67,6 @@ class Container():
         # Calculate the resulting x and y of the bottom left of the image
         self.sprite.x = self.x + self.marginPix + xShift
         self.sprite.y = self.y + self.marginPix + yShift
-        self.Running = False
-        # sleep(1 / 50)
 
     def visible(self) -> bool:
         # Returns True if any part of the sprite is on screen
@@ -98,30 +88,24 @@ class Container():
     def _updateSprite(self) -> None:
         if self.visible():
             if not self.imageLoaded:
-                # Show that the image has been loaded
+                # Show that the image has been loaded so we only request it once
                 self.imageLoaded = True
 
                 if self._path.is_dir():
+                    # Get the folder image
                     path = self.folderPath
                 else:
+                    # Get a thumbnail of a real image
                     path = self._path
-
-                # Create a process to receive the loaded images
-                # self.imageProcess = Thread(target=self.ReceiveImage, args=(self,))
-                self.Running = True
-                # self.imageProcess.start()
 
                 # Work out the image size (thumbnail minus margin top, bottom, left and right)
                 imageSize = self.containerSize - (self.marginPix * 2)
 
+                # Send a request to load the image at path, self._path is sent to allow matching the image to the container map
+                # A pipe can only have one thread access a particular end, otherwise the data will be corrupt
                 self.lock.acquire()
                 self.childConn.send((path, self._path, imageSize))
                 self.lock.release()
-
-        # else:
-        #     if self.imageLoaded:
-        #         self.sprite.image = self.defaultImage
-        #         self.imageLoaded = False
 
     @property
     def x(self) -> int:
@@ -129,9 +113,14 @@ class Container():
 
     @x.setter
     def x(self, x: int) -> None:
+        # Move the sprite in x
         self.sprite.x += x - self._x
+
+        # Move the container in x
         self._x = x
-        # self._updateSprite()
+
+        # Load the image if it is now visible and wasn't before
+        self._updateSprite()
 
     @property
     def y(self) -> int:
@@ -139,11 +128,17 @@ class Container():
 
     @y.setter
     def y(self, y: int) -> None:
+        # Move the sprite in y
         self.sprite.y += y - self._y
+
+        # Move the container in y
         self._y = y
+
+        # Load the image if it is now visible and wasn't before
         self._updateSprite()
 
     def delete(self) -> None:
+        # Delete the sprite
         self.sprite.delete()
 
 class FileBrowser(Window):
@@ -166,7 +161,7 @@ class FileBrowser(Window):
         # Get the screen width and height
         self.set_fullscreen(True)
 
-        # Create the thumbnail server and get the request queue
+        # Create the thumbnail server and get the request queue and lock
         self.thumbnailServer = ThumbnailServer()
         self.childConn = self.thumbnailServer.childConn
         self.pipeLock = Lock()
@@ -190,7 +185,7 @@ class FileBrowser(Window):
         # Log that the browser has opened
         logging.info('Opened FileBrowser')
 
-        # Controld for drawing the FPS
+        # Control for drawing the FPS
         self.displayFps = False
         self.fpsDisplay = FPSDisplay(self)
 
@@ -200,8 +195,8 @@ class FileBrowser(Window):
         # Constant defining the number of thnumbnails in a row
         self.thumbnailsPerRow = 6
 
-        # The list of thumbnails
-        self.thumbnailList: dict[Path, Container] = {}
+        # The dict of thumbnails indexed by Path
+        self.thumbnailDict: dict[Path, Container] = {}
 
         # Start a timed operation to receive images
         pyglet.clock.schedule_interval(self.ReceiveImages, 1 / 60)
@@ -218,10 +213,10 @@ class FileBrowser(Window):
         self.currentScroll = 0
 
         # Clear the thumbnails down if they exist
-        if self.thumbnailList:
-            for thumbnail in self.thumbnailList.values():
+        if self.thumbnailDict:
+            for thumbnail in self.thumbnailDict.values():
                 thumbnail.delete()
-            self.thumbnailList.clear()
+            self.thumbnailDict.clear()
 
         # Clear the gridlines down if they exits
         if self.gridLines:
@@ -271,11 +266,11 @@ class FileBrowser(Window):
             # Tell the sprite how big the container is
             container.containerSize = thumbnailSize
 
-            # Add the path of the image or folder
+            # Add the path of the image or folder, this property will call _updateSprite triggering the thumbnail server to fetch the image
             container.path = path
 
-            # Append the sprite to the list
-            self.thumbnailList[path] = container
+            # Add the sprite to the dictionary
+            self.thumbnailDict[path] = container
 
             # Work out how much we are allowed to scroll this view vertically
             self.scrollableAmount = abs(container.y) if container.y < 0 else 0
@@ -324,18 +319,18 @@ class FileBrowser(Window):
             self.displayFps = not self.displayFps
 
     def ReceiveImages(self, dt) -> None:
-        # print('Rec')
+        # Receive all the images we can from the thumbnail server if any are available
         while self.childConn.poll():
+            # Receive the image, getting a lock to ensure this end of the pipe is accessed by only one thread
             self.pipeLock.acquire()
             path, fullImage = self.childConn.recv()
             self.pipeLock.release()
 
-            if path in self.thumbnailList:
-                self.thumbnailList[path].ReceiveImage(fullImage)
+            # If the path is in the dictionary, call the container's ReceiveImage function
+            if path in self.thumbnailDict:
+                self.thumbnailDict[path].ReceiveImage(fullImage)
 
     def on_draw(self):
-        # self.ReceiveImages()
-
         # Clear the display
         self.clear()
 
@@ -369,8 +364,8 @@ class FileBrowser(Window):
                 scroll = self.scrollableAmount - self.currentScroll
                 self.currentScroll = self.scrollableAmount
 
-            # asyncio.run(self.scrollThumbnails(scroll))
-            for thumbail in self.thumbnailList.values():
+            # Update all the thumbnails, this will trigger new images to be loaded bythe thumbnail server if necessary
+            for thumbail in self.thumbnailDict.values():
                 thumbail.y += scroll
 
             # Move the gridlines
@@ -384,7 +379,7 @@ class FileBrowser(Window):
 
     def on_mouse_press(self, x, y, button, modifiers):
         # Iterate through the sprites
-        for sprite in self.thumbnailList.values():
+        for sprite in self.thumbnailDict.values():
             # Get each sprite to check whether it was the target of the mouse click
             if sprite.InSprite(x, y):
                 if sprite.path:

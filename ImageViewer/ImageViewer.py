@@ -15,7 +15,7 @@ class ImageViewer:
             imagePath = Path(sys.argv[1])
         else:
             # Otherwise try to default to the Pictures folder
-            imagePath = Path.home() / 'Pictures/Alex'
+            imagePath = Path.home() / 'Pictures'
 
             # If Pictures does not exist use the user home folder as the default instead
             if not imagePath.exists():
