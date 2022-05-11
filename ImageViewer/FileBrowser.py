@@ -47,6 +47,9 @@ class Container():
         # Check whether the image has been loaded
         self.imageLoaded = False
 
+        # Check whether we are loading an image
+        self.imageLoading = False
+
         # Pipe to send image load requests
         self.childConn = childConn
 
@@ -54,6 +57,9 @@ class Container():
         self.lock = lock
 
     def ReceiveImage(self, image: ImageData) -> None:
+        # We are no longer loading an image
+        self.imageLoading = False
+
         # Set the sprites image to the one recieved from the thumbnail server process
         self.sprite.image = image
 
@@ -90,6 +96,9 @@ class Container():
             if not self.imageLoaded:
                 # Show that the image has been loaded so we only request it once
                 self.imageLoaded = True
+
+                # Show that an image is being loaded so that a timer gets triggered to check for a response
+                self.imageLoading = True
 
                 if self._path.is_dir():
                     # Get the folder image
@@ -198,9 +207,6 @@ class FileBrowser(Window):
         # The dict of thumbnails indexed by Path
         self.thumbnailDict: dict[Path, Container] = {}
 
-        # Start a timed operation to receive images
-        pyglet.clock.schedule_interval(self.ReceiveImages, 1 / 60)
-
         # Read the files and folders in this folder and create thumbnails from them
         self._GetThumbnails()
 
@@ -269,6 +275,9 @@ class FileBrowser(Window):
             # Add the path of the image or folder, this property will call _updateSprite triggering the thumbnail server to fetch the image
             container.path = path
 
+            # Schedule a check for images from the thumbnail server
+            pyglet.clock.schedule_once(self.ReceiveImages, 1 / 60)
+
             # Add the sprite to the dictionary
             self.thumbnailDict[path] = container
 
@@ -294,6 +303,23 @@ class FileBrowser(Window):
                 # Append the label to the list
                 self.folderNames.append(label)
 
+    def ReceiveImages(self, dt) -> None:
+        # Receive all the images we can from the thumbnail server if any are available
+        while self.childConn.poll():
+            # Receive the image, getting a lock to ensure this end of the pipe is accessed by only one thread
+            self.pipeLock.acquire()
+            path, fullImage = self.childConn.recv()
+            self.pipeLock.release()
+
+            # If the path is in the dictionary, call the container's ReceiveImage function
+            if path in self.thumbnailDict:
+                self.thumbnailDict[path].ReceiveImage(fullImage)
+
+        # Check if any containers are waiting for images
+        if any([container.imageLoading for container in self.thumbnailDict.values()]):
+            # Schedule a check for images from the thumbnail server
+            pyglet.clock.schedule_once(self.ReceiveImages, 1 / 60)
+
     def on_key_press(self, symbol, modifiers):
         if symbol == key.ESCAPE:
             # Log that the browser window is closing
@@ -317,18 +343,6 @@ class FileBrowser(Window):
         elif symbol == key.F:
             # Toggle display of the FPS
             self.displayFps = not self.displayFps
-
-    def ReceiveImages(self, dt) -> None:
-        # Receive all the images we can from the thumbnail server if any are available
-        while self.childConn.poll():
-            # Receive the image, getting a lock to ensure this end of the pipe is accessed by only one thread
-            self.pipeLock.acquire()
-            path, fullImage = self.childConn.recv()
-            self.pipeLock.release()
-
-            # If the path is in the dictionary, call the container's ReceiveImage function
-            if path in self.thumbnailDict:
-                self.thumbnailDict[path].ReceiveImage(fullImage)
 
     def on_draw(self):
         # Clear the display
@@ -367,6 +381,9 @@ class FileBrowser(Window):
             # Update all the thumbnails, this will trigger new images to be loaded bythe thumbnail server if necessary
             for thumbail in self.thumbnailDict.values():
                 thumbail.y += scroll
+
+            # Schedule a check for images from the thumbnail server
+            pyglet.clock.schedule_once(self.ReceiveImages, 1 / 60)
 
             # Move the gridlines
             for gridLine in self.gridLines:
