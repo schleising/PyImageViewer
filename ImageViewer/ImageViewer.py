@@ -70,3 +70,9 @@ class ImageViewer:
 
         # Run the app
         pyglet.app.run()
+
+        # Put None onto the thumbnail server queue to stop the process
+        self.fileBrowser.thumbnailServer.childConn.send((None, None, None))
+
+        # Log that the application is closing
+        logging.info('Exiting')
