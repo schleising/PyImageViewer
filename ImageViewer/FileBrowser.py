@@ -287,12 +287,11 @@ class FileBrowser(Window):
             # Work out how much we are allowed to scroll this view vertically
             self.scrollableAmount = abs(container.y) if container.y < 0 else 0
 
-            if self.drawGridLines:
-                # If we are drawing gridlines, add them to the gridline list
-                self.gridLines.append(Line(xStart, yStart, xStart, yStart + thumbnailSize, batch=self.batch))
-                self.gridLines.append(Line(xStart, yStart + thumbnailSize, xStart + thumbnailSize, yStart + thumbnailSize, batch=self.batch))
-                self.gridLines.append(Line(xStart + thumbnailSize, yStart + thumbnailSize, xStart + thumbnailSize, yStart, batch=self.batch))
-                self.gridLines.append(Line(xStart + thumbnailSize, yStart, xStart, yStart, batch=self.batch))
+            # Add gridlines to the gridline list
+            self.gridLines.append(Line(xStart, yStart, xStart, yStart + thumbnailSize, batch=self.batch))
+            self.gridLines.append(Line(xStart, yStart + thumbnailSize, xStart + thumbnailSize, yStart + thumbnailSize, batch=self.batch))
+            self.gridLines.append(Line(xStart + thumbnailSize, yStart + thumbnailSize, xStart + thumbnailSize, yStart, batch=self.batch))
+            self.gridLines.append(Line(xStart + thumbnailSize, yStart, xStart, yStart, batch=self.batch))
 
             # If this is a folder, add the name
             if path.is_dir():
@@ -305,6 +304,10 @@ class FileBrowser(Window):
 
                 # Append the label to the list
                 self.folderNames.append(label)
+
+        # Show or hide the gridlines
+        for gridLine in self.gridLines:
+            gridLine.visible = self.drawGridLines
 
     def ReceiveImages(self, dt) -> None:
         # Receive all the images we can from the thumbnail server if any are available
@@ -346,6 +349,13 @@ class FileBrowser(Window):
         elif symbol == key.F:
             # Toggle display of the FPS
             self.displayFps = not self.displayFps
+        elif symbol == key.G:
+            # Toggle display of gridlines
+            self.drawGridLines = not self.drawGridLines
+
+            # Show or hide the gridlnes
+            for gridLine in self.gridLines:
+                gridLine.visible = self.drawGridLines
 
     def on_draw(self):
         # Clear the display
