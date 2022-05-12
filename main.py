@@ -15,7 +15,7 @@ def main() -> None:
     logging.info('App Started')
 
     # Start the image viewer
-    ImageViewer()
+    ImageViewer(fullScreenAllowed=True)
 
 if __name__ == '__main__':
     main()

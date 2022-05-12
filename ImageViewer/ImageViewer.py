@@ -9,7 +9,7 @@ from ImageViewer.FileBrowser import FileBrowser
 from ImageViewer.FileTypes import supportedExtensions
 
 class ImageViewer:
-    def __init__(self) -> None:
+    def __init__(self, fullScreenAllowed: bool) -> None:
         if len(sys.argv) > 1:
             # If there is an image on the command line, get it
             imagePath = Path(sys.argv[1])
@@ -34,11 +34,14 @@ class ImageViewer:
             # If it's a folder start in the browser in this folder
             startInViewer = False
 
+        # Control whether the windows are allowed to be full screen
+        self.fullScreenAllowed = fullScreenAllowed
+
         # Create a viewer
-        self.viewer = Viewer()
+        self.viewer = Viewer(self.fullScreenAllowed)
 
         # Create a file browser
-        self.fileBrowser = FileBrowser(imagePath, self.viewer, self.viewer.SetupImagePathAndLoadImage)
+        self.fileBrowser = FileBrowser(imagePath, self.viewer, self.viewer.SetupImagePathAndLoadImage, self.fullScreenAllowed)
 
         # Let the viewer have access to the file browser
         self.viewer.fileBrowser = self.fileBrowser

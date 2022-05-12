@@ -151,7 +151,7 @@ class Container():
         self.sprite.delete()
 
 class FileBrowser(Window):
-    def __init__(self, inputPath: Path, viewerWindow: Window, loadFunction: Callable[[Path], None]) -> None:
+    def __init__(self, inputPath: Path, viewerWindow: Window, loadFunction: Callable[[Path], None], fullScreenAllowed: bool) -> None:
         # Call base class init
         super(FileBrowser, self).__init__()
 
@@ -167,8 +167,11 @@ class FileBrowser(Window):
         # Set the path of the input, getting the parent folder if this is actually a file
         self.inputPath = inputPath.parent if inputPath.is_file() else inputPath
 
+        # Control whether the windows are allowed to be full screen
+        self.fullScreenAllowed = fullScreenAllowed
+
         # Get the screen width and height
-        self.set_fullscreen(True)
+        self.set_fullscreen(self.fullScreenAllowed)
 
         # Create the thumbnail server and get the request queue and lock
         self.thumbnailServer = ThumbnailServer()
@@ -327,7 +330,7 @@ class FileBrowser(Window):
 
             if self.imageViewerInitialised:
                 # Set the viewer window back to full screen
-                self.viewerWindow.set_fullscreen(True)
+                self.viewerWindow.set_fullscreen(self.viewerWindow.fullScreenAllowed)
 
                 # Activate the viewer window to ensure it has focus
                 self.viewerWindow.activate()
@@ -405,7 +408,7 @@ class FileBrowser(Window):
                         logging.info('Closing File Browser due to click')
 
                         # Set the viewer back to full screen
-                        self.viewerWindow.set_fullscreen(True)
+                        self.viewerWindow.set_fullscreen(self.viewerWindow.fullScreenAllowed)
 
                         # Show the viewer window
                         self.viewerWindow.set_visible(True)

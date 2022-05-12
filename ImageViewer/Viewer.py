@@ -20,7 +20,7 @@ class Direction(Enum):
     Back = auto()
 
 class Viewer(pyglet.window.Window):
-    def __init__(self) -> None:
+    def __init__(self, fullScreenAllowed) -> None:
         # Call base class init
         super(Viewer, self).__init__()
 
@@ -75,8 +75,11 @@ class Viewer(pyglet.window.Window):
         # Create a batch drawing context
         self.batch = pyglet.graphics.Batch()
 
+        # Control whether the windows are allowed to be full screen
+        self.fullScreenAllowed = fullScreenAllowed
+
         # Set window to full screen
-        self.set_fullscreen(True)
+        self.set_fullscreen(self.fullScreenAllowed)
 
         # Create the initial Bezier curve
         self._CreateBezierCurve()
@@ -500,7 +503,7 @@ class Viewer(pyglet.window.Window):
         elif symbol == key.UP:
             # Open the file browser window with the current image parent path
             if not self.fileBrowser:
-                self.fileBrowser = FileBrowser(self.images[self.currentImageIndex], self, self.SetupImagePathAndLoadImage)
+                self.fileBrowser = FileBrowser(self.images[self.currentImageIndex], self, self.SetupImagePathAndLoadImage, self.fullScreenAllowed)
             else:
                 self.fileBrowser.set_visible(True)
 
