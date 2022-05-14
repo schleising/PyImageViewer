@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from multiprocessing import Lock
 from multiprocessing.connection import Connection
-from typing import Callable
+from typing import Callable, Optional
 
 import pyglet
 from pyglet.window import key, Window, FPSDisplay
@@ -56,23 +56,25 @@ class Container():
         # Lock for the pipe
         self.lock = lock
 
-    def ReceiveImage(self, image: ImageData) -> None:
+    def ReceiveImage(self, image: Optional[ImageData]) -> None:
         # We are no longer loading an image
         self.imageLoading = False
 
-        # Set the sprites image to the one recieved from the thumbnail server process
-        self.sprite.image = image
+        # Check that the thumbnail has actually been loaded
+        if image is not None:
+            # Set the sprites image to the one recieved from the thumbnail server process
+            self.sprite.image = image
 
-        # Work out the image size (thumbnail minus margin top, bottom, left and right)
-        imageSize = self.containerSize - (self.marginPix * 2)
+            # Work out the image size (thumbnail minus margin top, bottom, left and right)
+            imageSize = self.containerSize - (self.marginPix * 2)
 
-        # Work out how far we have to shift the image to centre it in the thumbnail space
-        xShift = (imageSize - self.sprite.width) // 2
-        yShift = (imageSize - self.sprite.height) // 2
+            # Work out how far we have to shift the image to centre it in the thumbnail space
+            xShift = (imageSize - self.sprite.width) // 2
+            yShift = (imageSize - self.sprite.height) // 2
 
-        # Calculate the resulting x and y of the bottom left of the image
-        self.sprite.x = self.x + self.marginPix + xShift
-        self.sprite.y = self.y + self.marginPix + yShift
+            # Calculate the resulting x and y of the bottom left of the image
+            self.sprite.x = self.x + self.marginPix + xShift
+            self.sprite.y = self.y + self.marginPix + yShift
 
     def visible(self) -> bool:
         # Returns True if any part of the sprite is on screen

@@ -42,6 +42,7 @@ OPTIONS = {
     'argv_emulation': True,
     'iconfile': 'ImageViewer/Resources/ImageViewer.icns',
     'plist': Plist,
+    'packages': 'PIL',
 }
 
 setup(

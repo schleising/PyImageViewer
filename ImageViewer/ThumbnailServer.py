@@ -8,7 +8,13 @@ from pyglet.image import ImageData
 
 class ThumbnailServer:
     def __init__(self) -> None:
-        # Flagto indicate that the Process is being closed
+        # Create a file to log information to, this will be replaced with proper logging later
+        self.logFile = Path.home() / '.TSLog.txt'
+
+        # Log that the server has started
+        self.log('Starting Thumbnail Server')
+
+        # Flag to indicate that the Process is being closed
         self.closing = False
 
         # The process itself
@@ -19,6 +25,11 @@ class ThumbnailServer:
 
         # Start the process
         self.process.start()
+
+    def log(self, message: str) -> None:
+        # Open the logfile and log the message
+        with open(self.logFile, 'a', encoding='utf-8') as logFile:
+            logFile.write(f'{message}\n')
 
     def mainLoop(self) -> None:
         # Create a lock to ensure this end of the pipe is accessed by one thread at a time
@@ -51,23 +62,31 @@ class ThumbnailServer:
         lock.release()
 
     def LoadImage(self, imagePath: Path, path: Path, containerSize, lock):
-        # Load the image
-        fullImage = Image.open(imagePath)
+        # Try to load the image
+        try:
+            fullImage = Image.open(imagePath)
+        except:
+            # If the image cannot be loaded, log the error
+            self.log(f'Loading {imagePath.name} Failed')
 
-        # Create a thumnail of the image
-        fullImage.thumbnail((containerSize, containerSize))
+            # Set image to None, this needs to be handled by the receiving end
+            image = None
+        else:
 
-        # Get the mode (e.g., 'RGBA')
-        mode = fullImage.mode
+            # Create a thumnail of the image
+            fullImage.thumbnail((containerSize, containerSize))
 
-        # Get the number of bytes per pixel
-        formatLength = len(mode) if mode else 4
+            # Get the mode (e.g., 'RGBA')
+            mode = fullImage.mode
 
-        # Convert the image to bytes
-        rawImage = fullImage.tobytes()
+            # Get the number of bytes per pixel
+            formatLength = len(mode) if mode else 4
 
-        # Create a Pyglet ImageData object from the bytes
-        image = ImageData(fullImage.width, fullImage.height, mode, rawImage, -fullImage.width * formatLength)
+            # Convert the image to bytes
+            rawImage = fullImage.tobytes()
+
+            # Create a Pyglet ImageData object from the bytes
+            image = ImageData(fullImage.width, fullImage.height, mode, rawImage, -fullImage.width * formatLength)
 
         # Get a lock and, if the Process isn't shutting down, send the path and image back to the file browser
         lock.acquire()
