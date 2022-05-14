@@ -7,9 +7,19 @@ import pyglet
 from ImageViewer.Viewer import Viewer
 from ImageViewer.FileBrowser import FileBrowser
 from ImageViewer.FileTypes import supportedExtensions
+from ImageViewer.Logger import Logger
 
 class ImageViewer:
     def __init__(self, fullScreenAllowed: bool) -> None:
+        # Create a logger instance
+        logger = Logger()
+
+        # Get the logger queue
+        logQueue = logger.messageQueue
+
+        # Log that the application has started
+        logQueue.put_nowait(('Application Started', logging.INFO))
+
         if len(sys.argv) > 1:
             # If there is an image on the command line, get it
             imagePath = Path(sys.argv[1])
@@ -38,10 +48,10 @@ class ImageViewer:
         self.fullScreenAllowed = fullScreenAllowed
 
         # Create a viewer
-        self.viewer = Viewer(self.fullScreenAllowed)
+        self.viewer = Viewer(logQueue, self.fullScreenAllowed)
 
         # Create a file browser
-        self.fileBrowser = FileBrowser(imagePath, self.viewer, self.viewer.SetupImagePathAndLoadImage, self.fullScreenAllowed)
+        self.fileBrowser = FileBrowser(imagePath, self.viewer, self.viewer.SetupImagePathAndLoadImage, logQueue, self.fullScreenAllowed)
 
         # Let the viewer have access to the file browser
         self.viewer.fileBrowser = self.fileBrowser
@@ -68,8 +78,8 @@ class ImageViewer:
             # Activate the file browser
             self.fileBrowser.activate()
 
-        # Log that the app is starting
-        logging.info('Starting Pyglet mainloop')
+        # Log that the main loop is starting
+        logQueue.put_nowait(('Starting Pyglet mainloop', logging.DEBUG))
 
         # Run the app
         pyglet.app.run()
@@ -78,4 +88,4 @@ class ImageViewer:
         self.fileBrowser.thumbnailServer.childConn.send((None, None, None))
 
         # Log that the application is closing
-        logging.info('Exiting')
+        logQueue.put_nowait(('Exiting', logging.INFO))

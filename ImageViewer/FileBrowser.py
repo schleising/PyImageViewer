@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from multiprocessing import Lock
+from multiprocessing import Lock, Queue
 from multiprocessing.connection import Connection
 from typing import Callable, Optional
 
@@ -153,9 +153,12 @@ class Container():
         self.sprite.delete()
 
 class FileBrowser(Window):
-    def __init__(self, inputPath: Path, viewerWindow: Window, loadFunction: Callable[[Path], None], fullScreenAllowed: bool) -> None:
+    def __init__(self, inputPath: Path, viewerWindow: Window, loadFunction: Callable[[Path], None], logQueue: Queue, fullScreenAllowed: bool) -> None:
         # Call base class init
         super(FileBrowser, self).__init__()
+
+        # Set the log queue
+        self.logQueue = logQueue
 
         # Set the viewer window so that we can control it before closing this one
         self.viewerWindow = viewerWindow
@@ -176,7 +179,7 @@ class FileBrowser(Window):
         self.set_fullscreen(self.fullScreenAllowed)
 
         # Create the thumbnail server and get the request queue and lock
-        self.thumbnailServer = ThumbnailServer()
+        self.thumbnailServer = ThumbnailServer(self.logQueue)
         self.childConn = self.thumbnailServer.childConn
         self.pipeLock = Lock()
 
@@ -197,7 +200,7 @@ class FileBrowser(Window):
         self.gridLines: list[Line] = []
 
         # Log that the browser has opened
-        logging.info('Opened FileBrowser')
+        self.logQueue.put_nowait(('Opened FileBrowser', logging.DEBUG))
 
         # Control for drawing the FPS
         self.displayFps = False
@@ -331,7 +334,7 @@ class FileBrowser(Window):
     def on_key_press(self, symbol, modifiers):
         if symbol == key.ESCAPE:
             # Log that the browser window is closing
-            logging.info('Closing File Browser')
+            self.logQueue.put_nowait(('Closing File Browser', logging.DEBUG))
 
             if self.imageViewerInitialised:
                 # Set the viewer window back to full screen
@@ -417,7 +420,7 @@ class FileBrowser(Window):
                 if sprite.path:
                     if sprite.path.is_file():
                         # If this is a file, log that the browser window will close
-                        logging.info('Closing File Browser due to click')
+                        self.logQueue.put_nowait(('Closing File Browser due to click', logging.DEBUG))
 
                         # Set the viewer back to full screen
                         self.viewerWindow.set_fullscreen(self.viewerWindow.fullScreenAllowed)
