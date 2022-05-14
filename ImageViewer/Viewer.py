@@ -6,6 +6,7 @@ import math
 from pathlib import Path
 import time
 from typing import Optional
+import multiprocessing as mp
 
 import pyglet
 from pyglet.window import key, FPSDisplay
@@ -20,13 +21,16 @@ class Direction(Enum):
     Back = auto()
 
 class Viewer(pyglet.window.Window):
-    def __init__(self, fullScreenAllowed) -> None:
+    def __init__(self, logQueue: mp.Queue, fullScreenAllowed = False) -> None:
         # Call base class init
         super(Viewer, self).__init__()
 
         # Add an event logger
         # event_logger = event.WindowEventLogger()
         # self.push_handlers(event_logger)
+
+        # Set the log queue
+        self.logQueue = logQueue
 
         # The current image
         self.image: Optional[ImageData] = None
@@ -488,7 +492,7 @@ class Viewer(pyglet.window.Window):
     def on_key_press(self, symbol, modifiers):
         if symbol == key.ESCAPE:
             # Quit the application
-            logging.info('Exiting Pyglet application')
+            self.logQueue.put_nowait(('Exiting Pyglet application', logging.DEBUG))
             pyglet.app.exit()
         # Ignore the request if the previous scroll is still ongoing
         elif symbol == key.B:
@@ -503,7 +507,7 @@ class Viewer(pyglet.window.Window):
         elif symbol == key.UP:
             # Open the file browser window with the current image parent path
             if not self.fileBrowser:
-                self.fileBrowser = FileBrowser(self.images[self.currentImageIndex], self, self.SetupImagePathAndLoadImage, self.fullScreenAllowed)
+                self.fileBrowser = FileBrowser(self.images[self.currentImageIndex], self, self.SetupImagePathAndLoadImage, self.logQueue, self.fullScreenAllowed)
             else:
                 self.fileBrowser.set_visible(True)
 

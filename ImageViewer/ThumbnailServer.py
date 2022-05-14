@@ -1,3 +1,4 @@
+import logging
 import multiprocessing as mp
 from threading import Thread, Lock
 from pathlib import Path
@@ -7,12 +8,12 @@ from PIL import Image
 from pyglet.image import ImageData
 
 class ThumbnailServer:
-    def __init__(self) -> None:
-        # Create a file to log information to, this will be replaced with proper logging later
-        self.logFile = Path.home() / '.TSLog.txt'
+    def __init__(self, logQueue: mp.Queue) -> None:
+        # Set the log queue
+        self.logQueue = logQueue
 
         # Log that the server has started
-        self.log('Starting Thumbnail Server')
+        self.log('Starting Thumbnail Server', logging.DEBUG)
 
         # Flag to indicate that the Process is being closed
         self.closing = False
@@ -26,10 +27,9 @@ class ThumbnailServer:
         # Start the process
         self.process.start()
 
-    def log(self, message: str) -> None:
-        # Open the logfile and log the message
-        with open(self.logFile, 'a', encoding='utf-8') as logFile:
-            logFile.write(f'{message}\n')
+    def log(self, message: str, level: int) -> None:
+        # Send the message and level to the log queue
+        self.logQueue.put_nowait((message, level))
 
     def mainLoop(self) -> None:
         # Create a lock to ensure this end of the pipe is accessed by one thread at a time
@@ -67,7 +67,7 @@ class ThumbnailServer:
             fullImage = Image.open(imagePath)
         except:
             # If the image cannot be loaded, log the error
-            self.log(f'Loading {imagePath.name} Failed')
+            self.log(f'Loading {imagePath.name} Failed', logging.WARN)
 
             # Set image to None, this needs to be handled by the receiving end
             image = None
