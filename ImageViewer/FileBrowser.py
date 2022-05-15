@@ -115,19 +115,23 @@ class Container():
     def InitialiseSprite(self) -> None:
         # Check whther this is a file or folder and set the thumbnail appropriately
         if self._path.is_dir():
+            # Set the sprite
             self.sprite = Sprite(self.folderImage, batch=self.batch)
-            # Work out the centre x and y of the folder name
-            xlabel = self.x + (self.containerSize / 2)
-            ylabel = self.y + (self.marginPix / 2)
-
-            # Create the label using the centre anchor position
-            self.label = Label(self._path.name, x=xlabel, y=ylabel, anchor_x='center', anchor_y='center', batch=self.batch)
-
         else:
+            # Set the sprite
             self.sprite = Sprite(self.thumbnailImage, batch=self.batch)
 
             # Make the sprite mostly transparent for the loading image
             self.sprite.opacity = 64
+
+        # Work out the centre x and y of the label
+        xlabel = self.x + (self.containerSize / 2)
+        ylabel = self.y + (self.marginPix / 2)
+
+        labelText = self._path.stem if len(self._path.stem) <= 23 else f'{self._path.stem[:10]}...{self._path.stem[-10:]}'
+
+        # Create the label using the centre anchor position
+        self.label = Label(labelText, x=xlabel, y=ylabel, anchor_x='center', anchor_y='center', batch=self.batch)
 
         # Work out how far we have to shift the image to centre it in the thumbnail space
         xShift = (self.imageSize - self.sprite.width) // 2
