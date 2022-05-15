@@ -76,6 +76,9 @@ class Container():
         # The layout gridlines
         self.gridLines: list[Line] = []
 
+        # Indicate whether this image is highlighted
+        self._highlighted = False
+
     @classmethod
     def setContainerSize(cls, size: int) -> None:
         # If we have not yet created an image for the loading sprite
@@ -164,6 +167,31 @@ class Container():
         # Show or hide the gridlines
         for gridLine in self.gridLines:
             gridLine.visible = self._drawGridLines
+
+    @property
+    def highlighted(self) -> bool:
+        # Return the current value of highlighted
+        return self._highlighted
+
+    @highlighted.setter
+    def highlighted(self, highlighted: bool) -> None:
+        # Set the highlighted value
+        self._highlighted = highlighted
+
+        if self._highlighted:
+            # If this thumbnail is highlighted, set the colour
+            self.sprite.color = (180, 180, 255)
+
+            # Highlight the label dodger blue
+            if self.label:
+                self.label.color = (30, 144, 255, 255)
+        else:
+            # If this is not highlighted reset the colour
+            self.sprite.color = (255, 255, 255)
+
+            # Reset the label highlight
+            if self.label:
+                self.label.color = (255, 255, 255, 255)
 
     def ReceiveImage(self, image: Optional[ImageData]) -> None:
         # We are no longer loading an image
@@ -348,10 +376,16 @@ class FileBrowser(Window):
         # The dict of thumbnails indexed by Path
         self.thumbnailDict: dict[Path, Container] = {}
 
+        # Store the index of the image which is highlighted
+        self.highlightedImageIndex = 0
+
         # Read the files and folders in this folder and create thumbnails from them
         self._GetThumbnails()
 
     def _GetThumbnails(self) -> None:
+        # Reset the highlighted index to 0
+        self.highlightedImageIndex = 0
+
         # Initalise empty folder and file lists
         folderList: list[Path] = []
         fileList: list[Path] = []
@@ -413,6 +447,9 @@ class FileBrowser(Window):
             # Work out how much we are allowed to scroll this view vertically
             self.scrollableAmount = abs(container.y) if container.y < 0 else 0
 
+        # Highlight the first thumbnail
+        list(self.thumbnailDict.values())[self.highlightedImageIndex].highlighted = True
+
     def ReceiveImages(self, dt) -> None:
         # Receive all the images we can from the thumbnail server if any are available
         while self.childConn.poll():
@@ -451,12 +488,91 @@ class FileBrowser(Window):
                 # If the viewer was never initialised, exit the application
                 pyglet.app.exit()
         elif symbol == key.UP:
-            # Update the path with the parent folder path
-            self.inputPath = self.inputPath.parent
+            if modifiers & key.MOD_SHIFT:
+                # Update the path with the parent folder path
+                self.inputPath = self.inputPath.parent
 
-            # Regenerate the thumbnails for the new folder
-            self._GetThumbnails()
+                # Regenerate the thumbnails for the new folder
+                self._GetThumbnails()
+            else:
+                # Reset the highlight on the current thumbnail
+                list(self.thumbnailDict.values())[self.highlightedImageIndex].highlighted = False
 
+                # Increment the highlighted index
+                self.highlightedImageIndex -= self.thumbnailsPerRow
+
+                # Check the index is in bounds
+                if self.highlightedImageIndex < 0:
+                    self.highlightedImageIndex = 0
+
+                # Get the new thumbnail
+                newThumbnail = list(self.thumbnailDict.values())[self.highlightedImageIndex]
+
+                # Highlight the image at the new index
+                newThumbnail.highlighted = True
+
+                # Scroll the display if necesary
+                self.CheckThumbnailVisible(newThumbnail)
+        elif symbol == key.DOWN:
+            # Reset the highlight on the current thumbnail
+            list(self.thumbnailDict.values())[self.highlightedImageIndex].highlighted = False
+
+            # Increment the highlighted index
+            self.highlightedImageIndex += self.thumbnailsPerRow
+
+            # Check the index is in bounds
+            if self.highlightedImageIndex >= len(self.thumbnailDict):
+                self.highlightedImageIndex = len(self.thumbnailDict) - 1
+
+            # Get the new thumbnail
+            newThumbnail = list(self.thumbnailDict.values())[self.highlightedImageIndex]
+
+            # Highlight the image at the new index
+            newThumbnail.highlighted = True
+
+            # Scroll the display if necesary
+            self.CheckThumbnailVisible(newThumbnail)
+        elif symbol == key.RIGHT:
+            # Reset the highlight on the current thumbnail
+            list(self.thumbnailDict.values())[self.highlightedImageIndex].highlighted = False
+
+            # Increment the highlighted index
+            self.highlightedImageIndex += 1
+
+            # Check the index is in bounds
+            if self.highlightedImageIndex >= len(self.thumbnailDict):
+                self.highlightedImageIndex = 0
+
+            # Get the new thumbnail
+            newThumbnail = list(self.thumbnailDict.values())[self.highlightedImageIndex]
+
+            # Highlight the image at the new index
+            newThumbnail.highlighted = True
+
+            # Scroll the display if necesary
+            self.CheckThumbnailVisible(newThumbnail)
+        elif symbol == key.LEFT:
+            # Reset the highlight on the current thumbnail
+            list(self.thumbnailDict.values())[self.highlightedImageIndex].highlighted = False
+
+            # Decrement the highlighted index
+            self.highlightedImageIndex -= 1
+
+            # Check the index is in bounds
+            if self.highlightedImageIndex < 0:
+                self.highlightedImageIndex = len(self.thumbnailDict) - 1
+
+            # Get the new thumbnail
+            newThumbnail = list(self.thumbnailDict.values())[self.highlightedImageIndex]
+
+            # Highlight the image at the new index
+            newThumbnail.highlighted = True
+
+            # Scroll the display if necesary
+            self.CheckThumbnailVisible(newThumbnail)
+        elif symbol == key.ENTER:
+            # Load the currently highlighted image or folder
+            self.LoadImage(list(self.thumbnailDict.values())[self.highlightedImageIndex].path)
         elif symbol == key.F:
             # Toggle display of the FPS
             self.displayFps = not self.displayFps
@@ -464,6 +580,21 @@ class FileBrowser(Window):
             for thumbnail in self.thumbnailDict.values():
                 # Toggle display of gridlines
                 thumbnail.drawGridLines = not thumbnail.drawGridLines
+
+    def CheckThumbnailVisible(self, newThumbnail: Container) -> None:
+        # Check whether the thumbnail is fully on the screen
+        if newThumbnail.y < 0:
+            # If it is off the bottom, work out the scroll amount
+            scrollAmount = abs(newThumbnail.y)
+
+            # Scroll by this amount
+            self.ScrollBrowser(scrollAmount)
+        elif newThumbnail.y + newThumbnail.containerSize > self.height:
+            # If it is off the top, work out the scroll amount
+            scrollAmount = self.height - (newThumbnail.y + newThumbnail.containerSize)
+
+            # Scroll by this amount
+            self.ScrollBrowser(scrollAmount)
 
     def on_draw(self):
         # Clear the display
@@ -486,25 +617,29 @@ class FileBrowser(Window):
             scroll = None
 
         if scroll:
-            # Work out what the new scroll value would be
-            newScroll = self.currentScroll + scroll
+            # Scroll by the scroll amount
+            self.ScrollBrowser(scroll)
 
-            # Check that this scroll value wouldn't take the view out of bounds, if so, constrain it
-            if newScroll < self.scrollableAmount and newScroll >= 0:
-                self.currentScroll = newScroll
-            elif newScroll < 0:
-                scroll = -self.currentScroll
-                self.currentScroll = 0
-            else:
-                scroll = self.scrollableAmount - self.currentScroll
-                self.currentScroll = self.scrollableAmount
+    def ScrollBrowser(self, scroll) -> None:
+        # Work out what the new scroll value would be
+        newScroll = self.currentScroll + scroll
 
-            # Update all the thumbnails, this will trigger new images to be loaded bythe thumbnail server if necessary
-            for thumbail in self.thumbnailDict.values():
-                thumbail.y += scroll
+        # Check that this scroll value wouldn't take the view out of bounds, if so, constrain it
+        if newScroll < self.scrollableAmount and newScroll >= 0:
+            self.currentScroll = newScroll
+        elif newScroll < 0:
+            scroll = -self.currentScroll
+            self.currentScroll = 0
+        else:
+            scroll = self.scrollableAmount - self.currentScroll
+            self.currentScroll = self.scrollableAmount
 
-            # Schedule a check for images from the thumbnail server
-            pyglet.clock.schedule_once(self.ReceiveImages, 1 / 60)
+        # Update all the thumbnails, this will trigger new images to be loaded bythe thumbnail server if necessary
+        for thumbail in self.thumbnailDict.values():
+            thumbail.y += scroll
+
+        # Schedule a check for images from the thumbnail server
+        pyglet.clock.schedule_once(self.ReceiveImages, 1 / 60)
 
     def on_mouse_press(self, x, y, button, modifiers):
         # Iterate through the sprites
@@ -512,33 +647,34 @@ class FileBrowser(Window):
             # Get each sprite to check whether it was the target of the mouse click
             if sprite.InSprite(x, y):
                 if sprite.path:
-                    if sprite.path.is_file():
-                        # If this is a file, log that the browser window will close
-                        self.logQueue.put_nowait(('Closing File Browser due to click', logging.DEBUG))
+                    # Load the new image
+                    self.LoadImage(sprite.path)
 
-                        # Set the viewer back to full screen
-                        self.viewerWindow.set_fullscreen(self.viewerWindow.fullScreenAllowed)
+                    # Exit the loop
+                    break
 
-                        # Show the viewer window
-                        self.viewerWindow.set_visible(True)
+    def LoadImage(self, imagePath: Path) -> None:
+        if imagePath.is_file():
+            # If this is a file, log that the browser window will close
+            self.logQueue.put_nowait(('Closing File Browser due to click', logging.DEBUG))
 
-                        # Load the new image in the viewer window
-                        self.loadFunction(sprite.path)
+            # Set the viewer back to full screen
+            self.viewerWindow.set_fullscreen(self.viewerWindow.fullScreenAllowed)
 
-                        # Hide this window
-                        self.set_visible(False)
+            # Show the viewer window
+            self.viewerWindow.set_visible(True)
 
-                        # Activate teh viewer window
-                        self.viewerWindow.activate()
+            # Load the new image in the viewer window
+            self.loadFunction(imagePath)
 
-                        # Exit the loop
-                        break
-                    else:
-                        # If this is a folder, update the path with the new folder path
-                        self.inputPath = sprite.path
+            # Hide this window
+            self.set_visible(False)
 
-                        # Regenerate the thumbnails for the new folder
-                        self._GetThumbnails()
+            # Activate the viewer window
+            self.viewerWindow.activate()
+        else:
+            # If this is a folder, update the path with the new folder path
+            self.inputPath = imagePath
 
-                        # Exit the loop
-                        break
+            # Regenerate the thumbnails for the new folder
+            self._GetThumbnails()
