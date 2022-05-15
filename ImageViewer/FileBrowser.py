@@ -128,6 +128,7 @@ class Container():
         xlabel = self.x + (self.containerSize / 2)
         ylabel = self.y + (self.marginPix / 2)
 
+        # Get the stem, only getting the first and last ten characters if the filename is longer than 23 characters
         labelText = self._path.stem if len(self._path.stem) <= 23 else f'{self._path.stem[:10]}...{self._path.stem[-10:]}'
 
         # Create the label using the centre anchor position
