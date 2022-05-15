@@ -19,7 +19,10 @@ from ImageViewer.ThumbnailServer import ThumbnailServer
 
 class Container():
     # Load the default image
-    defaultImage = Image.open(Path('ImageViewer/Resources/Loading Icon.png'))
+    thumbnailInputImage = Image.open(Path('ImageViewer/Resources/Loading Icon.png'))
+
+    # Set the folder image
+    folderInputImage = Image.open(Path('ImageViewer/Resources/285658_blue_folder_icon.png'))
 
     # The size of the container
     containerSize: int = 0
@@ -31,14 +34,14 @@ class Container():
     imageSize = 0
 
     # Set the sprite image to be None
-    spriteImage = None
+    thumbnailImage = None
+
+    # Set the folder image to None
+    folderImage = None
 
     def __init__(self, x: int, y: int, screenHeight: int, batch: Batch, childConn: Connection, lock):
         # The path this thumbnail represents
         self._path: Path = Path()
-
-        # Set the path of the folder image
-        self.folderPath = Path('ImageViewer/Resources/285658_blue_folder_icon.png')
 
         # Set the batch
         self.batch = batch
@@ -64,15 +67,51 @@ class Container():
         # Lock for the pipe
         self.lock = lock
 
-        # Initialise the sprite
-        self.InitialiseSprite()
+    @classmethod
+    def setContainerSize(cls, size: int) -> None:
+        # If we have not yet created an image for the loading sprite
+        if cls.thumbnailImage is None or cls.folderImage is None or cls.containerSize != size:
+            # Set the container size
+            cls.containerSize = size
+
+            # Work out how big the thumbnail should be in the conainer
+            cls.imageSize = cls.containerSize - (cls.marginPix * 2)
+
+            # Create a thumbnail of the loading image
+            cls.thumbnailInputImage.thumbnail((cls.imageSize, cls.imageSize))
+
+            # Create a thumbnail of the folder image
+            cls.folderInputImage.thumbnail((cls.imageSize, cls.imageSize))
+
+            # Create the sprite for the thumbnail
+            cls.thumbnailImage = cls.CreateThumbnailSprite(cls.thumbnailInputImage)
+
+            # Create the sprite for the folder
+            cls.folderImage = cls.CreateThumbnailSprite(cls.folderInputImage)
+
+    @classmethod
+    def CreateThumbnailSprite(cls, thumbnail: Image.Image) -> ImageData:
+        # Get the mode (e.g., 'RGBA')
+        mode = thumbnail.mode
+
+        # Get the number of bytes per pixel
+        formatLength = len(mode) if mode else 4
+
+        # Convert the image to bytes
+        rawImage = thumbnail.tobytes()
+
+        # Create a Pyglet ImageData object from the bytes
+        return ImageData(thumbnail.width, thumbnail.height, mode, rawImage, -thumbnail.width * formatLength)
 
     def InitialiseSprite(self) -> None:
-        # Sprite in this container
-        self.sprite = Sprite(self.spriteImage, batch=self.batch)
+        # Check whther this is a file or folder and set the thumbnail appropriately
+        if self._path.is_dir():
+            self.sprite = Sprite(self.folderImage, batch=self.batch)
+        else:
+            self.sprite = Sprite(self.thumbnailImage, batch=self.batch)
 
-        # Make the sprite mostly transparent for the loading image
-        self.sprite.opacity = 64
+            # Make the sprite mostly transparent for the loading image
+            self.sprite.opacity = 64
 
         # Work out how far we have to shift the image to centre it in the thumbnail space
         xShift = (self.imageSize - self.sprite.width) // 2
@@ -102,31 +141,6 @@ class Container():
             self.sprite.x = self.x + self.marginPix + xShift
             self.sprite.y = self.y + self.marginPix + yShift
 
-    @classmethod
-    def setContainerSize(cls, size: int) -> None:
-        # If we have not yet created an image for the loading sprite
-        if cls.spriteImage == None or cls.containerSize != size:
-            # Set the container size
-            cls.containerSize = size
-
-            # Work out how big the thumbnail should be in the conainer
-            cls.imageSize = cls.containerSize - (cls.marginPix * 2)
-
-            # Create a thumbnail of the loading image
-            cls.defaultImage.thumbnail((cls.imageSize, cls.imageSize))
-
-            # Get the mode (e.g., 'RGBA')
-            mode = cls.defaultImage.mode
-
-            # Get the number of bytes per pixel
-            formatLength = len(mode) if mode else 4
-
-            # Convert the image to bytes
-            rawImage = cls.defaultImage.tobytes()
-
-            # Create a Pyglet ImageData object from the bytes
-            cls.spriteImage = ImageData(cls.defaultImage.width, cls.defaultImage.height, mode, rawImage, -cls.defaultImage.width * formatLength)
-
     def visible(self) -> bool:
         # Returns True if any part of the sprite is on screen
         return (self._y >= 0 and self._y < self.screenHeight) or (self._y + self.containerSize >= 0 and self._y + self.containerSize < self.screenHeight)
@@ -141,24 +155,26 @@ class Container():
 
     @path.setter
     def path(self, path: Path) -> None:
+        # Set the path
         self._path = path
+
+        # Initialise the sprite now we know the path
+        self.InitialiseSprite()
+
+        # Trigger off the thumbnail server to get the thumbnail
         self._updateSprite()
 
     def _updateSprite(self) -> None:
         if self.visible():
-            if not self.imageLoaded:
+            if not self.imageLoaded and not self._path.is_dir():
                 # Show that the image has been loaded so we only request it once
                 self.imageLoaded = True
 
                 # Show that an image is being loaded so that a timer gets triggered to check for a response
                 self.imageLoading = True
 
-                if self._path.is_dir():
-                    # Get the folder image
-                    path = self.folderPath
-                else:
-                    # Get a thumbnail of a real image
-                    path = self._path
+                # Get a thumbnail of a real image
+                path = self._path
 
                 # Send a request to load the image at path, self._path is sent to allow matching the image to the container map
                 # A pipe can only have one thread access a particular end, otherwise the data will be corrupt
