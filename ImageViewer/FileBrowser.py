@@ -70,6 +70,12 @@ class Container():
         # Label for this container
         self.label = None
 
+        # Set to True to draw gridlines to help layout
+        self._drawGridLines = False
+
+        # The layout gridlines
+        self.gridLines: list[Line] = []
+
     @classmethod
     def setContainerSize(cls, size: int) -> None:
         # If we have not yet created an image for the loading sprite
@@ -130,6 +136,29 @@ class Container():
         # Calculate the resulting x and y of the bottom left of the image
         self.sprite.x = self.x + self.marginPix + xShift
         self.sprite.y = self.y + self.marginPix + yShift
+
+        # Add gridlines to the gridline list
+        self.gridLines.append(Line(self.x, self.y, self.x, self.y + self.containerSize, batch=self.batch))
+        self.gridLines.append(Line(self.x, self.y + self.containerSize, self.x + self.containerSize, self.y + self.containerSize, batch=self.batch))
+        self.gridLines.append(Line(self.x + self.containerSize, self.y + self.containerSize, self.x + self.containerSize, self.y, batch=self.batch))
+        self.gridLines.append(Line(self.x + self.containerSize, self.y, self.x, self.y, batch=self.batch))
+
+        # Show or hide the gridlines
+        for gridLine in self.gridLines:
+            gridLine.visible = self._drawGridLines
+
+    @property
+    def drawGridLines(self) -> bool:
+        return self._drawGridLines
+
+    @drawGridLines.setter
+    def drawGridLines(self, drawGridLines: bool) -> None:
+        # Set the new value for Draw Grid Lines
+        self._drawGridLines = drawGridLines
+
+        # Show or hide the gridlines
+        for gridLine in self.gridLines:
+            gridLine.visible = self._drawGridLines
 
     def ReceiveImage(self, image: Optional[ImageData]) -> None:
         # We are no longer loading an image
@@ -198,12 +227,20 @@ class Container():
 
     @x.setter
     def x(self, x: int) -> None:
+        # Work out the scroll amount
+        scroll = x - self._x
+
         # Move the sprite in x
-        self.sprite.x += x - self._x
+        self.sprite.x += scroll
 
         # Move the label in x
         if self.label:
-            self.label.x += x - self._x
+            self.label.x += scroll
+
+        # Move the gridlines
+        for gridLine in self.gridLines:
+            gridLine.x += scroll
+            gridLine.x2 += scroll
 
         # Move the container in x
         self._x = x
@@ -217,12 +254,20 @@ class Container():
 
     @y.setter
     def y(self, y: int) -> None:
+        # Work out the scroll amount
+        scroll = y - self._y
+
         # Move the sprite in y
-        self.sprite.y += y - self._y
+        self.sprite.y += scroll
 
         # Move the label in x
         if self.label:
-            self.label.y += y - self._y
+            self.label.y += scroll
+
+        # Move the gridlines
+        for gridLine in self.gridLines:
+            gridLine.y += scroll
+            gridLine.y2 += scroll
 
         # Move the container in y
         self._y = y
@@ -237,6 +282,12 @@ class Container():
         # Delete the label
         if self.label:
             self.label.delete()
+
+        # Clear the gridlines down if they exits
+        if self.gridLines:
+            for gridLine in self.gridLines:
+                gridLine.delete()
+            self.gridLines.clear()
 
 class FileBrowser(Window):
     def __init__(self, inputPath: Path, viewerWindow: Window, loadFunction: Callable[[Path], None], logQueue: Queue, fullScreenAllowed: bool) -> None:
@@ -276,12 +327,6 @@ class FileBrowser(Window):
         # Margin around thumbnails
         self.marginPix = 20
 
-        # Set to True to draw gridlines to help layout
-        self.drawGridLines = False
-
-        # The layout gridlines
-        self.gridLines: list[Line] = []
-
         # Log that the browser has opened
         self.logQueue.put_nowait(('Opened FileBrowser', logging.DEBUG))
 
@@ -314,12 +359,6 @@ class FileBrowser(Window):
             for thumbnail in self.thumbnailDict.values():
                 thumbnail.delete()
             self.thumbnailDict.clear()
-
-        # Clear the gridlines down if they exits
-        if self.gridLines:
-            for gridLine in self.gridLines:
-                gridLine.delete()
-            self.gridLines.clear()
 
         # Work out the full thumbnail size (this is the size reserved for image and name)
         thumbnailSize = self.width / self.thumbnailsPerRow
@@ -369,16 +408,6 @@ class FileBrowser(Window):
             # Work out how much we are allowed to scroll this view vertically
             self.scrollableAmount = abs(container.y) if container.y < 0 else 0
 
-            # Add gridlines to the gridline list
-            self.gridLines.append(Line(xStart, yStart, xStart, yStart + thumbnailSize, batch=self.batch))
-            self.gridLines.append(Line(xStart, yStart + thumbnailSize, xStart + thumbnailSize, yStart + thumbnailSize, batch=self.batch))
-            self.gridLines.append(Line(xStart + thumbnailSize, yStart + thumbnailSize, xStart + thumbnailSize, yStart, batch=self.batch))
-            self.gridLines.append(Line(xStart + thumbnailSize, yStart, xStart, yStart, batch=self.batch))
-
-        # Show or hide the gridlines
-        for gridLine in self.gridLines:
-            gridLine.visible = self.drawGridLines
-
     def ReceiveImages(self, dt) -> None:
         # Receive all the images we can from the thumbnail server if any are available
         while self.childConn.poll():
@@ -420,12 +449,9 @@ class FileBrowser(Window):
             # Toggle display of the FPS
             self.displayFps = not self.displayFps
         elif symbol == key.G:
-            # Toggle display of gridlines
-            self.drawGridLines = not self.drawGridLines
-
-            # Show or hide the gridlnes
-            for gridLine in self.gridLines:
-                gridLine.visible = self.drawGridLines
+            for thumbnail in self.thumbnailDict.values():
+                # Toggle display of gridlines
+                thumbnail.drawGridLines = not thumbnail.drawGridLines
 
     def on_draw(self):
         # Clear the display
@@ -467,11 +493,6 @@ class FileBrowser(Window):
 
             # Schedule a check for images from the thumbnail server
             pyglet.clock.schedule_once(self.ReceiveImages, 1 / 60)
-
-            # Move the gridlines
-            for gridLine in self.gridLines:
-                gridLine.y += scroll
-                gridLine.y2 += scroll
 
     def on_mouse_press(self, x, y, button, modifiers):
         # Iterate through the sprites
