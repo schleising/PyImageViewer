@@ -72,21 +72,29 @@ class ThumbnailServer:
             # Set image to None, this needs to be handled by the receiving end
             image = None
         else:
+            try:
+                # Create a thumnail of the image
+                fullImage.thumbnail((containerSize, containerSize))
+            except:
+                # If the image cannot be loaded, log the error
+                self.log(f'Failed to Create Thumbnail for {imagePath.name}', logging.WARN)
 
-            # Create a thumnail of the image
-            fullImage.thumbnail((containerSize, containerSize))
+                # Set image to None, this needs to be handled by the receiving end
+                image = None
+            else:
+                # Log that the image loaded as the thumbnail was created
+                self.log(f'{imagePath.name} Loaded and Thumbnail Created', logging.DEBUG)
+                # Get the mode (e.g., 'RGBA')
+                mode = fullImage.mode
 
-            # Get the mode (e.g., 'RGBA')
-            mode = fullImage.mode
+                # Get the number of bytes per pixel
+                formatLength = len(mode) if mode else 4
 
-            # Get the number of bytes per pixel
-            formatLength = len(mode) if mode else 4
+                # Convert the image to bytes
+                rawImage = fullImage.tobytes()
 
-            # Convert the image to bytes
-            rawImage = fullImage.tobytes()
-
-            # Create a Pyglet ImageData object from the bytes
-            image = ImageData(fullImage.width, fullImage.height, mode, rawImage, -fullImage.width * formatLength)
+                # Create a Pyglet ImageData object from the bytes
+                image = ImageData(fullImage.width, fullImage.height, mode, rawImage, -fullImage.width * formatLength)
 
         # Get a lock and, if the Process isn't shutting down, send the path and image back to the file browser
         lock.acquire()
