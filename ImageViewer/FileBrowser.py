@@ -449,6 +449,13 @@ class FileBrowser(Window):
             else:
                 # If the viewer was never initialised, exit the application
                 pyglet.app.exit()
+        elif symbol == key.UP:
+            # Update the path with the parent folder path
+            self.inputPath = self.inputPath.parent
+
+            # Regenerate the thumbnails for the new folder
+            self._GetThumbnails()
+
         elif symbol == key.F:
             # Toggle display of the FPS
             self.displayFps = not self.displayFps
