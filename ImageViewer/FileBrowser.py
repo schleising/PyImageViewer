@@ -67,6 +67,9 @@ class Container():
         # Lock for the pipe
         self.lock = lock
 
+        # Label for this container
+        self.label = None
+
     @classmethod
     def setContainerSize(cls, size: int) -> None:
         # If we have not yet created an image for the loading sprite
@@ -107,6 +110,13 @@ class Container():
         # Check whther this is a file or folder and set the thumbnail appropriately
         if self._path.is_dir():
             self.sprite = Sprite(self.folderImage, batch=self.batch)
+            # Work out the centre x and y of the folder name
+            xlabel = self.x + (self.containerSize / 2)
+            ylabel = self.y + (self.marginPix / 2)
+
+            # Create the label using the centre anchor position
+            self.label = Label(self._path.name, x=xlabel, y=ylabel, anchor_x='center', anchor_y='center', batch=self.batch)
+
         else:
             self.sprite = Sprite(self.thumbnailImage, batch=self.batch)
 
@@ -191,6 +201,10 @@ class Container():
         # Move the sprite in x
         self.sprite.x += x - self._x
 
+        # Move the label in x
+        if self.label:
+            self.label.x += x - self._x
+
         # Move the container in x
         self._x = x
 
@@ -206,6 +220,10 @@ class Container():
         # Move the sprite in y
         self.sprite.y += y - self._y
 
+        # Move the label in x
+        if self.label:
+            self.label.y += y - self._y
+
         # Move the container in y
         self._y = y
 
@@ -215,6 +233,10 @@ class Container():
     def delete(self) -> None:
         # Delete the sprite
         self.sprite.delete()
+
+        # Delete the label
+        if self.label:
+            self.label.delete()
 
 class FileBrowser(Window):
     def __init__(self, inputPath: Path, viewerWindow: Window, loadFunction: Callable[[Path], None], logQueue: Queue, fullScreenAllowed: bool) -> None:
@@ -253,9 +275,6 @@ class FileBrowser(Window):
 
         # Margin around thumbnails
         self.marginPix = 20
-
-        # Labels for folder names
-        self.folderNames: list[Label] = []
 
         # Set to True to draw gridlines to help layout
         self.drawGridLines = False
@@ -301,12 +320,6 @@ class FileBrowser(Window):
             for gridLine in self.gridLines:
                 gridLine.delete()
             self.gridLines.clear()
-
-        # Clear the folder names down if they exist
-        if self.folderNames:
-            for folderName in self.folderNames:
-                folderName.delete()
-            self.folderNames.clear()
 
         # Work out the full thumbnail size (this is the size reserved for image and name)
         thumbnailSize = self.width / self.thumbnailsPerRow
@@ -361,18 +374,6 @@ class FileBrowser(Window):
             self.gridLines.append(Line(xStart, yStart + thumbnailSize, xStart + thumbnailSize, yStart + thumbnailSize, batch=self.batch))
             self.gridLines.append(Line(xStart + thumbnailSize, yStart + thumbnailSize, xStart + thumbnailSize, yStart, batch=self.batch))
             self.gridLines.append(Line(xStart + thumbnailSize, yStart, xStart, yStart, batch=self.batch))
-
-            # If this is a folder, add the name
-            if path.is_dir():
-                # Work out the centre x and y of the folder name
-                xlabel = xStart + (thumbnailSize / 2)
-                ylabel = yStart + (self.marginPix / 2)
-
-                # Create the label using the centre anchor position
-                label = Label(path.name, x=xlabel, y=ylabel, anchor_x='center', anchor_y='center', batch=self.batch)
-
-                # Append the label to the list
-                self.folderNames.append(label)
 
         # Show or hide the gridlines
         for gridLine in self.gridLines:
@@ -471,10 +472,6 @@ class FileBrowser(Window):
             for gridLine in self.gridLines:
                 gridLine.y += scroll
                 gridLine.y2 += scroll
-
-            # Move the folder names
-            for folderName in self.folderNames:
-                folderName.y += scroll
 
     def on_mouse_press(self, x, y, button, modifiers):
         # Iterate through the sprites
