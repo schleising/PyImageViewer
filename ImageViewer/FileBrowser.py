@@ -12,28 +12,36 @@ from pyglet.image import load, ImageData
 from pyglet.shapes import Line
 from pyglet.text import Label
 
+from PIL import Image
+
 from ImageViewer.FileTypes import supportedExtensions
 from ImageViewer.ThumbnailServer import ThumbnailServer
 
 class Container():
     # Load the default image
-    defaultImage: ImageData = load(Path('ImageViewer/Resources/1x1_#000000ff.png'))
+    defaultImage = Image.open(Path('ImageViewer/Resources/Loading Icon.png'))
+
+    # The size of the container
+    containerSize: int = 0
+
+    # Margin around thumbnails
+    marginPix = 20
+
+    # Size of the image inside the container
+    imageSize = 0
+
+    # Set the sprite image to be None
+    spriteImage = None
 
     def __init__(self, x: int, y: int, screenHeight: int, batch: Batch, childConn: Connection, lock):
         # The path this thumbnail represents
         self._path: Path = Path()
 
-        # The size of the container
-        self.containerSize: int = 0
-
         # Set the path of the folder image
         self.folderPath = Path('ImageViewer/Resources/285658_blue_folder_icon.png')
 
-        # Sprite in this container
-        self.sprite = Sprite(self.defaultImage, batch=batch)
-
-        # Margin around thumbnails
-        self.marginPix = 20
+        # Set the batch
+        self.batch = batch
 
         # x position
         self._x = x
@@ -56,6 +64,24 @@ class Container():
         # Lock for the pipe
         self.lock = lock
 
+        # Initialise the sprite
+        self.InitialiseSprite()
+
+    def InitialiseSprite(self) -> None:
+        # Sprite in this container
+        self.sprite = Sprite(self.spriteImage, batch=self.batch)
+
+        # Make the sprite mostly transparent for the loading image
+        self.sprite.opacity = 64
+
+        # Work out how far we have to shift the image to centre it in the thumbnail space
+        xShift = (self.imageSize - self.sprite.width) // 2
+        yShift = (self.imageSize - self.sprite.height) // 2
+
+        # Calculate the resulting x and y of the bottom left of the image
+        self.sprite.x = self.x + self.marginPix + xShift
+        self.sprite.y = self.y + self.marginPix + yShift
+
     def ReceiveImage(self, image: Optional[ImageData]) -> None:
         # We are no longer loading an image
         self.imageLoading = False
@@ -65,16 +91,41 @@ class Container():
             # Set the sprites image to the one recieved from the thumbnail server process
             self.sprite.image = image
 
-            # Work out the image size (thumbnail minus margin top, bottom, left and right)
-            imageSize = self.containerSize - (self.marginPix * 2)
+            # Reset the sprite opacity to 100%
+            self.sprite.opacity = 255
 
             # Work out how far we have to shift the image to centre it in the thumbnail space
-            xShift = (imageSize - self.sprite.width) // 2
-            yShift = (imageSize - self.sprite.height) // 2
+            xShift = (self.imageSize - self.sprite.width) // 2
+            yShift = (self.imageSize - self.sprite.height) // 2
 
             # Calculate the resulting x and y of the bottom left of the image
             self.sprite.x = self.x + self.marginPix + xShift
             self.sprite.y = self.y + self.marginPix + yShift
+
+    @classmethod
+    def setContainerSize(cls, size: int) -> None:
+        # If we have not yet created an image for the loading sprite
+        if cls.spriteImage == None or cls.containerSize != size:
+            # Set the container size
+            cls.containerSize = size
+
+            # Work out how big the thumbnail should be in the conainer
+            cls.imageSize = cls.containerSize - (cls.marginPix * 2)
+
+            # Create a thumbnail of the loading image
+            cls.defaultImage.thumbnail((cls.imageSize, cls.imageSize))
+
+            # Get the mode (e.g., 'RGBA')
+            mode = cls.defaultImage.mode
+
+            # Get the number of bytes per pixel
+            formatLength = len(mode) if mode else 4
+
+            # Convert the image to bytes
+            rawImage = cls.defaultImage.tobytes()
+
+            # Create a Pyglet ImageData object from the bytes
+            cls.spriteImage = ImageData(cls.defaultImage.width, cls.defaultImage.height, mode, rawImage, -cls.defaultImage.width * formatLength)
 
     def visible(self) -> bool:
         # Returns True if any part of the sprite is on screen
@@ -109,13 +160,10 @@ class Container():
                     # Get a thumbnail of a real image
                     path = self._path
 
-                # Work out the image size (thumbnail minus margin top, bottom, left and right)
-                imageSize = self.containerSize - (self.marginPix * 2)
-
                 # Send a request to load the image at path, self._path is sent to allow matching the image to the container map
                 # A pipe can only have one thread access a particular end, otherwise the data will be corrupt
                 self.lock.acquire()
-                self.childConn.send((path, self._path, imageSize))
+                self.childConn.send((path, self._path, self.imageSize))
                 self.lock.release()
 
     @property
@@ -247,6 +295,9 @@ class FileBrowser(Window):
         # Work out the full thumbnail size (this is the size reserved for image and name)
         thumbnailSize = self.width / self.thumbnailsPerRow
 
+        # Tell the sprite how big the container is
+        Container.setContainerSize(thumbnailSize)
+
         # Iterate through the files in the folder
         for path in self.inputPath.iterdir():
             # Ignore files starting with a . as they are hidden
@@ -276,9 +327,6 @@ class FileBrowser(Window):
 
             # Create a sprite from the image and add it to the drawing batch
             container = Container(xStart, yStart, self.height, self.batch, self.childConn, self.pipeLock)
-
-            # Tell the sprite how big the container is
-            container.containerSize = thumbnailSize
 
             # Add the path of the image or folder, this property will call _updateSprite triggering the thumbnail server to fetch the image
             container.path = path
