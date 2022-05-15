@@ -5,10 +5,10 @@ from multiprocessing.connection import Connection
 from typing import Callable, Optional
 
 import pyglet
-from pyglet.window import key, Window, FPSDisplay
+from pyglet.window import key, Window, FPSDisplay, mouse
 from pyglet.sprite import Sprite
 from pyglet.graphics import Batch
-from pyglet.image import load, ImageData
+from pyglet.image import ImageData
 from pyglet.shapes import Line
 from pyglet.text import Label
 
@@ -642,16 +642,36 @@ class FileBrowser(Window):
         pyglet.clock.schedule_once(self.ReceiveImages, 1 / 60)
 
     def on_mouse_press(self, x, y, button, modifiers):
-        # Iterate through the sprites
-        for sprite in self.thumbnailDict.values():
-            # Get each sprite to check whether it was the target of the mouse click
-            if sprite.InSprite(x, y):
-                if sprite.path:
-                    # Load the new image
-                    self.LoadImage(sprite.path)
+        if button == mouse.LEFT:
+            # Iterate through the sprites
+            for sprite in self.thumbnailDict.values():
+                # Get each sprite to check whether it was the target of the mouse click
+                if sprite.InSprite(x, y):
+                    if sprite.path:
+                        # Load the new image
+                        self.LoadImage(sprite.path)
 
-                    # Exit the loop
-                    break
+                        # Exit the loop
+                        break
+        elif button == mouse.RIGHT:
+            # Log that the browser window is closing
+            self.logQueue.put_nowait(('Closing File Browser', logging.DEBUG))
+
+            if self.imageViewerInitialised:
+                # Set the viewer window back to full screen
+                self.viewerWindow.set_fullscreen(self.viewerWindow.fullScreenAllowed)
+
+                # Activate the viewer window to ensure it has focus
+                self.viewerWindow.activate()
+
+                # Show the viewer windoes
+                self.viewerWindow.set_visible(True)
+
+                # Hide this browser window
+                self.set_visible(False)
+            else:
+                # If the viewer was never initialised, exit the application
+                pyglet.app.exit()
 
     def LoadImage(self, imagePath: Path) -> None:
         if imagePath.is_file():

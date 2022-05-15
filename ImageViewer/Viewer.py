@@ -9,7 +9,7 @@ from typing import Optional
 import multiprocessing as mp
 
 import pyglet
-from pyglet.window import key, FPSDisplay
+from pyglet.window import key, FPSDisplay, mouse
 from pyglet.sprite import Sprite
 from pyglet.image import ImageData, ImageDataRegion
 from ImageViewer.FileBrowser import FileBrowser
@@ -676,22 +676,27 @@ class Viewer(pyglet.window.Window):
             self.rectangle = None
 
     def on_mouse_press(self, x, y, button, modifiers):
-        # Show the mouse while pressed, do not autohide
-        self._ShowMouse(False)
+        if button == mouse.LEFT:
+            # Show the mouse while pressed, do not autohide
+            self._ShowMouse(False)
 
-        # Clear the left command key held status
-        self.leftCommandHeld = False
+            # Clear the left command key held status
+            self.leftCommandHeld = False
 
-        # Clear the rectangle
-        if self.rectangle:
-            self.rectangle.delete()
-            self.rectangle = None
+            # Clear the rectangle
+            if self.rectangle:
+                self.rectangle.delete()
+                self.rectangle = None
 
-        # Get the hand cursor
-        cursor = self.get_system_mouse_cursor(self.CURSOR_HAND)
+            # Get the hand cursor
+            cursor = self.get_system_mouse_cursor(self.CURSOR_HAND)
 
-        # Set the hand as the current cursor
-        self.set_mouse_cursor(cursor)
+            # Set the hand as the current cursor
+            self.set_mouse_cursor(cursor)
+        elif button == mouse.RIGHT:
+            # Quit the application
+            self.logQueue.put_nowait(('Exiting Pyglet application', logging.DEBUG))
+            pyglet.app.exit()
 
     def on_mouse_release(self, x, y, button, modifiers):
         # Show the mouse when released, autohiding after the timeout
