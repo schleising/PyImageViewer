@@ -38,11 +38,11 @@ class ThumbnailServer:
         # Run until told to stop
         while True:
             # Receive the imagePath, the path for container indexing and the size of the container
-            imagePath, path, containerSize = self.parentConn.recv()
+            imagePath, containerSize = self.parentConn.recv()
 
             if imagePath is not None and containerSize is not None:
                 # Create and start a thread to load and thumbnail the image
-                loadThread = Thread(target=self.LoadImage, args=(imagePath, path, containerSize, lock))
+                loadThread = Thread(target=self.LoadImage, args=(imagePath, containerSize, lock))
                 loadThread.start()
             else:
                 # If the application is closing, exit  the loop
@@ -61,7 +61,7 @@ class ThumbnailServer:
         self.childConn.close()
         lock.release()
 
-    def LoadImage(self, imagePath: Path, path: Path, containerSize, lock):
+    def LoadImage(self, imagePath: Path, containerSize, lock):
         # Try to load the image
         try:
             fullImage = Image.open(imagePath)
@@ -99,5 +99,5 @@ class ThumbnailServer:
         # Get a lock and, if the Process isn't shutting down, send the path and image back to the file browser
         lock.acquire()
         if not self.closing:
-            self.parentConn.send((path, image))
+            self.parentConn.send((imagePath, image))
         lock.release()

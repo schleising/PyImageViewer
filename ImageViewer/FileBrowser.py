@@ -264,13 +264,10 @@ class Container():
                 # Show that an image is being loaded so that a timer gets triggered to check for a response
                 self.imageLoading = True
 
-                # Get a thumbnail of a real image
-                path = self._path
-
                 # Send a request to load the image at path, self._path is sent to allow matching the image to the container map
                 # A pipe can only have one thread access a particular end, otherwise the data will be corrupt
                 self.lock.acquire()
-                self.childConn.send((path, self._path, self.imageSize))
+                self.childConn.send((self._path, self.imageSize))
                 self.lock.release()
         else:
             # Set the image loaded and image loading variables to False
