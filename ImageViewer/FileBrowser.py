@@ -46,6 +46,9 @@ class Container():
         # Set the batch
         self.batch = batch
 
+        # Initially set the sprite to None
+        self.sprite = None
+
         # x position
         self._x = x
 
@@ -116,6 +119,11 @@ class Container():
         return ImageData(thumbnail.width, thumbnail.height, mode, rawImage, -thumbnail.width * formatLength)
 
     def InitialiseSprite(self) -> None:
+        # Delete the sprite if it exists
+        if self.sprite:
+            self.sprite.delete()
+            self.sprite = None
+
         # Check whther this is a file or folder and set the thumbnail appropriately
         if self._path.is_dir():
             # Set the sprite
@@ -127,16 +135,6 @@ class Container():
             # Make the sprite mostly transparent for the loading image
             self.sprite.opacity = 64
 
-        # Work out the centre x and y of the label
-        xlabel = self.x + (self.containerSize / 2)
-        ylabel = self.y + (self.marginPix / 2)
-
-        # Get the stem, only getting the first and last ten characters if the filename is longer than 23 characters
-        labelText = self._path.stem if len(self._path.stem) <= 23 else f'{self._path.stem[:10]}...{self._path.stem[-10:]}'
-
-        # Create the label using the centre anchor position
-        self.label = Label(labelText, x=xlabel, y=ylabel, anchor_x='center', anchor_y='center', batch=self.batch)
-
         # Work out how far we have to shift the image to centre it in the thumbnail space
         xShift = (self.imageSize - self.sprite.width) // 2
         yShift = (self.imageSize - self.sprite.height) // 2
@@ -145,15 +143,27 @@ class Container():
         self.sprite.x = self.x + self.marginPix + xShift
         self.sprite.y = self.y + self.marginPix + yShift
 
-        # Add gridlines to the gridline list
-        self.gridLines.append(Line(self.x, self.y, self.x, self.y + self.containerSize, batch=self.batch))
-        self.gridLines.append(Line(self.x, self.y + self.containerSize, self.x + self.containerSize, self.y + self.containerSize, batch=self.batch))
-        self.gridLines.append(Line(self.x + self.containerSize, self.y + self.containerSize, self.x + self.containerSize, self.y, batch=self.batch))
-        self.gridLines.append(Line(self.x + self.containerSize, self.y, self.x, self.y, batch=self.batch))
+        if self.label is None:
+            # Work out the centre x and y of the label
+            xlabel = self.x + (self.containerSize / 2)
+            ylabel = self.y + (self.marginPix / 2)
 
-        # Show or hide the gridlines
-        for gridLine in self.gridLines:
-            gridLine.visible = self._drawGridLines
+            # Get the stem, only getting the first and last ten characters if the filename is longer than 23 characters
+            labelText = self._path.stem if len(self._path.stem) <= 23 else f'{self._path.stem[:10]}...{self._path.stem[-10:]}'
+
+            # Create the label using the centre anchor position
+            self.label = Label(labelText, x=xlabel, y=ylabel, anchor_x='center', anchor_y='center', batch=self.batch)
+
+        if not self.gridLines:
+            # Add gridlines to the gridline list
+            self.gridLines.append(Line(self.x, self.y, self.x, self.y + self.containerSize, batch=self.batch))
+            self.gridLines.append(Line(self.x, self.y + self.containerSize, self.x + self.containerSize, self.y + self.containerSize, batch=self.batch))
+            self.gridLines.append(Line(self.x + self.containerSize, self.y + self.containerSize, self.x + self.containerSize, self.y, batch=self.batch))
+            self.gridLines.append(Line(self.x + self.containerSize, self.y, self.x, self.y, batch=self.batch))
+
+            # Show or hide the gridlines
+            for gridLine in self.gridLines:
+                gridLine.visible = self._drawGridLines
 
     @property
     def drawGridLines(self) -> bool:
@@ -180,14 +190,16 @@ class Container():
 
         if self._highlighted:
             # If this thumbnail is highlighted, set the colour
-            self.sprite.color = (180, 180, 255)
+            if self.sprite:
+                self.sprite.color = (180, 180, 255)
 
             # Highlight the label dodger blue
             if self.label:
                 self.label.color = (30, 144, 255, 255)
         else:
             # If this is not highlighted reset the colour
-            self.sprite.color = (255, 255, 255)
+            if self.sprite:
+                self.sprite.color = (255, 255, 255)
 
             # Reset the label highlight
             if self.label:
@@ -198,7 +210,7 @@ class Container():
         self.imageLoading = False
 
         # Check that the thumbnail has actually been loaded
-        if image is not None:
+        if image is not None and self.sprite is not None:
             # Set the sprites image to the one recieved from the thumbnail server process
             self.sprite.image = image
 
@@ -219,7 +231,10 @@ class Container():
 
     def InSprite(self, x: int, y: int) -> bool:
         # Return true if the click was inside the image (not container) bounds
-        return x >= self.sprite.x and y >= self.sprite.y and x <= self.sprite.x + self.sprite.width and y <= self.sprite.y + self.sprite.height
+        if self.sprite:
+            return x >= self.sprite.x and y >= self.sprite.y and x <= self.sprite.x + self.sprite.width and y <= self.sprite.y + self.sprite.height
+        else:
+            return False
 
     @property
     def path(self) -> Path:
@@ -238,6 +253,10 @@ class Container():
 
     def _updateSprite(self) -> None:
         if self.visible():
+            # Initialise the sprite if it doesn't already exist
+            if self.sprite is None:
+                self.InitialiseSprite()
+
             if not self.imageLoaded and not self._path.is_dir():
                 # Show that the image has been loaded so we only request it once
                 self.imageLoaded = True
@@ -253,6 +272,13 @@ class Container():
                 self.lock.acquire()
                 self.childConn.send((path, self._path, self.imageSize))
                 self.lock.release()
+        else:
+            # Set the image loaded and image loading variables to False
+            self.imageLoaded = False
+            self.imageLoading = False
+
+            # Clear the sorite, label and gridlines
+            self.delete()
 
     @property
     def x(self) -> int:
@@ -264,7 +290,8 @@ class Container():
         scroll = x - self._x
 
         # Move the sprite in x
-        self.sprite.x += scroll
+        if self.sprite:
+            self.sprite.x += scroll
 
         # Move the label in x
         if self.label:
@@ -291,7 +318,8 @@ class Container():
         scroll = y - self._y
 
         # Move the sprite in y
-        self.sprite.y += scroll
+        if self.sprite:
+            self.sprite.y += scroll
 
         # Move the label in x
         if self.label:
@@ -310,16 +338,20 @@ class Container():
 
     def delete(self) -> None:
         # Delete the sprite
-        self.sprite.delete()
+        if self.sprite:
+            self.sprite.delete()
+            self.sprite = None
 
         # Delete the label
         if self.label:
             self.label.delete()
+            self.label = None
 
         # Clear the gridlines down if they exits
         if self.gridLines:
             for gridLine in self.gridLines:
                 gridLine.delete()
+                gridLine = None
             self.gridLines.clear()
 
 class FileBrowser(Window):
