@@ -377,9 +377,14 @@ class FileBrowser(Window):
         # Get the screen width and height
         self.set_fullscreen(self.fullScreenAllowed)
 
-        # Create the thumbnail server and get the request queue and lock
+        # Create and start the thumbnail server and get the request queue and lock
         self.thumbnailServer = ThumbnailServer(self.logQueue)
+        self.thumbnailServer.start()
+
+        # Get the pipe child connection
         self.childConn = self.thumbnailServer.childConn
+
+        # Lock access to the pipe such that only one thread reads at a time
         self.pipeLock = Lock()
 
         # Controls for vertical scrolling to ensure the scroll remains in bounds

@@ -1,103 +1,110 @@
 import logging
 import multiprocessing as mp
-from threading import Thread, Lock
+from multiprocessing.connection import Connection
+from multiprocessing.synchronize import Lock as LockBase
 from pathlib import Path
 
 from PIL import Image
 
 from pyglet.image import ImageData
 
-class ThumbnailServer:
-    def __init__(self, logQueue: mp.Queue) -> None:
-        # Set the log queue
-        self.logQueue = logQueue
+def poolInitialiser(inputLock: LockBase, conn: Connection, inLogQueue: mp.Queue) -> None:
+    # Global variables to ensure they are shared between processes
+    global lock
+    global parentConn
+    global logQueue
 
-        # Log that the server has started
-        self.log('Starting Thumbnail Server', logging.DEBUG)
+    # Lock for pipe access
+    lock = inputLock
 
-        # Flag to indicate that the Process is being closed
-        self.closing = False
+    # The parent pipe connection
+    parentConn = conn
 
-        # The process itself
-        self.process = mp.Process(target=self.mainLoop)
+    # The log queue
+    logQueue = inLogQueue
 
-        # Create a Pip to communicate with the file browser
-        self.parentConn, self.childConn = mp.Pipe()
+    # Log that the pools are initialising
+    log('Initialising Pools', logging.DEBUG)
 
-        # Start the process
-        self.process.start()
+def log(message: str, level: int) -> None:
+    # Send the message and level to the log queue
+    logQueue.put_nowait((message, level))
 
-    def log(self, message: str, level: int) -> None:
-        # Send the message and level to the log queue
-        self.logQueue.put_nowait((message, level))
+def LoadImage(imagePath: Path, containerSize):
+    # Try to load the image
+    try:
+        fullImage = Image.open(imagePath)
+    except:
+        # If the image cannot be loaded, log the error
+        log(f'Loading {imagePath.name} Failed', logging.WARN)
 
-    def mainLoop(self) -> None:
-        # Create a lock to ensure this end of the pipe is accessed by one thread at a time
-        lock = Lock()
-
-        # Run until told to stop
-        while True:
-            # Receive the imagePath, the path for container indexing and the size of the container
-            imagePath, containerSize = self.parentConn.recv()
-
-            if imagePath is not None and containerSize is not None:
-                # Create and start a thread to load and thumbnail the image
-                loadThread = Thread(target=self.LoadImage, args=(imagePath, containerSize, lock))
-                loadThread.start()
-            else:
-                # If the application is closing, exit  the loop
-                break
-
-        # Indicate that the process is closing
-        self.closing = True
-
-        # If there ane messages in the pipe, recive them to clear the pipe down and allow threads to exit
-        while self.childConn.poll():
-            self.childConn.recv()
-
-        # Close the ends of the pipe using a lock to ensure a thread isn't accessing it (they should all have stopped by now anyway)
-        lock.acquire()
-        self.parentConn.close()
-        self.childConn.close()
-        lock.release()
-
-    def LoadImage(self, imagePath: Path, containerSize, lock):
-        # Try to load the image
+        # Set image to None, this needs to be handled by the receiving end
+        image = None
+    else:
         try:
-            fullImage = Image.open(imagePath)
+            # Create a thumnail of the image
+            fullImage.thumbnail((containerSize, containerSize))
         except:
             # If the image cannot be loaded, log the error
-            self.log(f'Loading {imagePath.name} Failed', logging.WARN)
+            log(f'Failed to Create Thumbnail for {imagePath.name}', logging.WARN)
 
             # Set image to None, this needs to be handled by the receiving end
             image = None
         else:
-            try:
-                # Create a thumnail of the image
-                fullImage.thumbnail((containerSize, containerSize))
-            except:
-                # If the image cannot be loaded, log the error
-                self.log(f'Failed to Create Thumbnail for {imagePath.name}', logging.WARN)
+            # Log that the image loaded as the thumbnail was created
+            log(f'{imagePath.name} Loaded and Thumbnail Created', logging.DEBUG)
 
-                # Set image to None, this needs to be handled by the receiving end
-                image = None
-            else:
-                # Log that the image loaded as the thumbnail was created
-                self.log(f'{imagePath.name} Loaded and Thumbnail Created', logging.DEBUG)
-                # Get the mode (e.g., 'RGBA')
-                mode = fullImage.mode
+            # Get the mode (e.g., 'RGBA')
+            mode = fullImage.mode
 
-                # Get the number of bytes per pixel
-                formatLength = len(mode) if mode else 4
+            # Get the number of bytes per pixel
+            formatLength = len(mode) if mode else 4
 
-                # Convert the image to bytes
-                rawImage = fullImage.tobytes()
+            # Convert the image to bytes
+            rawImage = fullImage.tobytes()
 
-                # Create a Pyglet ImageData object from the bytes
-                image = ImageData(fullImage.width, fullImage.height, mode, rawImage, -fullImage.width * formatLength)
+            # Create a Pyglet ImageData object from the bytes
+            image = ImageData(fullImage.width, fullImage.height, mode, rawImage, -fullImage.width * formatLength)
 
-        # Get a lock and, if the Process isn't shutting down, send the path and image back to the file browser
-        lock.acquire()
-        if not self.closing:
-            self.parentConn.send((imagePath, image))
-        lock.release()
+    # Get a lock and, if the Process isn't shutting down, send the path and image back to the file browser
+    lock.acquire()
+    parentConn.send((imagePath, image))
+    lock.release()
+
+class ThumbnailServer(mp.Process):
+    def __init__(self, logQueue: mp.Queue) -> None:
+        super(ThumbnailServer, self).__init__()
+
+        # Set the log queue
+        self.logQueue = logQueue
+
+        # Create a lock to ensure this end of the pipe is accessed by one thread at a time
+        self.lock = mp.Lock()
+
+        # Create a Pipe to communicate with the file browser
+        self.parentConn, self.childConn = mp.Pipe()
+
+    def run(self) -> None:
+        # Start a process pool to load and thumbnail the images
+        with mp.Pool(initializer=poolInitialiser, initargs=(self.lock, self.parentConn, self.logQueue)) as pool:
+            # Initialise the global data (queues, locks, pipes)
+            poolInitialiser(self.lock, self.parentConn, self.logQueue)
+
+            # Log that the server has started
+            log('Starting Thumbnail Server', logging.DEBUG)
+
+            # Run until told to stop
+            while True:
+                # Receive the imagePath, the path for container indexing and the size of the container
+                imagePath, containerSize = self.parentConn.recv()
+
+                if imagePath is not None and containerSize is not None:
+                    # Add a job to the process pool to load and thumbnail the image
+                    pool.apply_async(LoadImage, (imagePath, containerSize))
+                else:
+                    # If the application is closing, exit  the loop
+                    break
+
+        # Close the ends of the pipe using a lock to ensure a thread isn't accessing it (they should all have stopped by now anyway)
+        self.parentConn.close()
+        self.childConn.close()
