@@ -1,3 +1,4 @@
+from multiprocessing import freeze_support
 from ImageViewer.ImageViewer import ImageViewer
 
 def main() -> None:
@@ -5,4 +6,5 @@ def main() -> None:
     ImageViewer(fullScreenAllowed=True)
 
 if __name__ == '__main__':
+    freeze_support()
     main()

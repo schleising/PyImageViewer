@@ -105,6 +105,6 @@ class ThumbnailServer(mp.Process):
                     # If the application is closing, exit  the loop
                     break
 
-        # Close the ends of the pipe using a lock to ensure a thread isn't accessing it (they should all have stopped by now anyway)
-        self.parentConn.close()
-        self.childConn.close()
+            # Close the ends of the pipe using a lock to ensure a thread isn't accessing it (they should all have stopped by now anyway)
+            self.parentConn.close()
+            self.childConn.close()
