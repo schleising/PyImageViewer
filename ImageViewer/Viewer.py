@@ -9,25 +9,27 @@ from typing import Optional
 import queue
 
 import pyglet
-from pyglet.window import key, FPSDisplay, mouse
+from pyglet.window import key, mouse, Window
 from pyglet.sprite import Sprite
 from pyglet.image import ImageData, ImageDataRegion
 from ImageViewer.FileBrowser import FileBrowser
 
 from ImageViewer.FileTypes import supportedExtensions
+# from ImageViewer.ImageViewer import ImageViewer
 
 class Direction(Enum):
     Forward = auto()
     Back = auto()
 
-class Viewer(pyglet.window.Window):
-    def __init__(self, logQueue: queue.Queue, fullScreenAllowed = False) -> None:
-        # Call base class init
-        super(Viewer, self).__init__()
+class Viewer():
+    def __init__(self, mainWindow: Window, logQueue: queue.Queue) -> None:
 
         # Add an event logger
         # event_logger = event.WindowEventLogger()
         # self.push_handlers(event_logger)
+
+        # Set the main window
+        self.mainWindow = mainWindow
 
         # Set the log queue
         self.logQueue = logQueue
@@ -40,10 +42,6 @@ class Viewer(pyglet.window.Window):
 
         # Sprite containing the old image when scrolling in the new one
         self.oldSprite: Optional[Sprite] = None
-
-        # Control whether the FPS value is displayed
-        self.displayFps = False
-        self.fpsDisplay = FPSDisplay(self)
 
         # Set safe defaults
         self.xStartDrag = 0
@@ -78,12 +76,6 @@ class Viewer(pyglet.window.Window):
 
         # Create a batch drawing context
         self.batch = pyglet.graphics.Batch()
-
-        # Control whether the windows are allowed to be full screen
-        self.fullScreenAllowed = fullScreenAllowed
-
-        # Set window to full screen
-        self.set_fullscreen(self.fullScreenAllowed)
 
         # Create the initial Bezier curve
         self._CreateBezierCurve()
@@ -123,14 +115,14 @@ class Viewer(pyglet.window.Window):
 
     def _HideMouse(self, dt: float = 0.0) -> None:
         # Hide the mouse after the timeout expires
-        self.set_mouse_visible(False)
+        self.mainWindow.set_mouse_visible(False)
 
     def _ShowMouse(self, autoHide: bool) -> None:
         # Unschedule the mouse hide callback
         pyglet.clock.unschedule(self._HideMouse)
 
         # Set the mouse to be visible
-        self.set_mouse_visible(True)
+        self.mainWindow.set_mouse_visible(True)
 
         # If we want to hide the mouse again after a timeout, schedule the callback
         if autoHide:
@@ -159,42 +151,47 @@ class Viewer(pyglet.window.Window):
             self.image = pyglet.image.load(self.images[self.currentImageIndex])
             self.imageCanBeSaved = False
 
-        # Work out how much to scale each axis to fit into the screen
-        xScale = self.width / self.image.width
-        yScale = self.height / self.image.height
+        # Scale and position the image to fit the window
+        self._ScaleImage()
 
-        # Both axes need to be scaled by the smallest number
-        scalingFactor = min(xScale, yScale)
+    def _ScaleImage(self) -> None:
+        if self.image:
+            # Work out how much to scale each axis to fit into the screen
+            xScale = self.mainWindow.width / self.image.width
+            yScale = self.mainWindow.height / self.image.height
 
-        # Calculate the x and y position needed to draw the image in the centre of the screen
-        xPos = self.width / 2 - (scalingFactor * self.image.width / 2)
-        yPos = self.height / 2 - (scalingFactor * self.image.height / 2)
+            # Both axes need to be scaled by the smallest number
+            scalingFactor = min(xScale, yScale)
 
-        # Work out where in x we want the new image to stop scrolling in
-        self.targetXPos = xPos
+            # Calculate the x and y position needed to draw the image in the centre of the screen
+            xPos = self.mainWindow.width / 2 - (scalingFactor * self.image.width / 2)
+            yPos = self.mainWindow.height / 2 - (scalingFactor * self.image.height / 2)
 
-        if self.direction == Direction.Forward:
-            # Work out the off screen x position for the new image to start
-            xPos = xPos + self.width
-        elif self.direction == Direction.Back:
-            # Work out the off screen x position for the new image to start
-            xPos = xPos - self.width
+            # Work out where in x we want the new image to stop scrolling in
+            self.targetXPos = xPos
 
-        # Store the starting position for use in calculating the transition
-        self.startXPos = xPos
+            if self.direction == Direction.Forward:
+                # Work out the off screen x position for the new image to start
+                xPos = xPos + self.mainWindow.width
+            elif self.direction == Direction.Back:
+                # Work out the off screen x position for the new image to start
+                xPos = xPos - self.mainWindow.width
 
-        # Create a sprite containing the image at the calculated x, y position
-        self.sprite = pyglet.sprite.Sprite(img=self.image, x=xPos, y=yPos, batch=self.batch, group=self.background)
+            # Store the starting position for use in calculating the transition
+            self.startXPos = xPos
 
-        # Scale the sprite
-        self.sprite.scale = scalingFactor
+            # Create a sprite containing the image at the calculated x, y position
+            self.sprite = pyglet.sprite.Sprite(img=self.image, x=xPos, y=yPos, batch=self.batch, group=self.background)
 
-        # Hide the mouse immediately
-        self._HideMouse()
+            # Scale the sprite
+            self.sprite.scale = scalingFactor
 
-        if self.direction is not None:
-            # Schedule an animation frame at the desired frame rate
-            pyglet.clock.schedule_interval(self._AnimateNewImage, 1 / self.fps)
+            # Hide the mouse immediately
+            self._HideMouse()
+
+            if self.direction is not None:
+                # Schedule an animation frame at the desired frame rate
+                pyglet.clock.schedule_interval(self._AnimateNewImage, 1 / self.fps)
 
     def _CalculateBezierPoint(self, t: float) -> tuple[float, float]:
         # Initialise the returned point to 0, 0
@@ -311,8 +308,8 @@ class Viewer(pyglet.window.Window):
                 screenX, screenY = 0, 0
 
                 # Get the screen width and height
-                screenWidth = self.width
-                screenHeight = self.height
+                screenWidth = self.mainWindow.width
+                screenHeight = self.mainWindow.height
             elif self.rectangle:
                 # Get the screen x and y coordinates of the rectangle
                 screenX, screenY = self.rectangle.position
@@ -325,8 +322,8 @@ class Viewer(pyglet.window.Window):
                 screenX, screenY = 0, 0
 
                 # Get the screen width and height
-                screenWidth = self.width
-                screenHeight = self.height
+                screenWidth = self.mainWindow.width
+                screenHeight = self.mainWindow.height
 
             # Ensure that the x and y of the rectangle are bottom left
             if screenWidth < 0:
@@ -385,10 +382,10 @@ class Viewer(pyglet.window.Window):
 
         # Create the Bezier curve
         self.bezierCurve = [pyglet.shapes.Line(
-            x1 * (self.width / 2) + (self.width / 4),
-            y1 * (self.height / 2) + (self.height / 4),
-            x2 * (self.width / 2) + (self.width / 4),
-            y2 * (self.height / 2) + (self.height / 4),
+            x1 * (self.mainWindow.width / 2) + (self.mainWindow.width / 4),
+            y1 * (self.mainWindow.height / 2) + (self.mainWindow.height / 4),
+            x2 * (self.mainWindow.width / 2) + (self.mainWindow.width / 4),
+            y2 * (self.mainWindow.height / 2) + (self.mainWindow.height / 4),
             batch=self.batch,
             group=self.foreground,
             color=(255, 0, 0),
@@ -397,10 +394,10 @@ class Viewer(pyglet.window.Window):
 
         # Create a line showing the P0 -> P1 control line
         self.p0p1Line = pyglet.shapes.Line(
-            self.p0[0] * (self.width / 2) + (self.width / 4),
-            self.p0[1] * (self.height / 2) + (self.height / 4),
-            self.p1[0] * (self.width / 2) + (self.width / 4),
-            self.p1[1] * (self.height / 2) + (self.height / 4),
+            self.p0[0] * (self.mainWindow.width / 2) + (self.mainWindow.width / 4),
+            self.p0[1] * (self.mainWindow.height / 2) + (self.mainWindow.height / 4),
+            self.p1[0] * (self.mainWindow.width / 2) + (self.mainWindow.width / 4),
+            self.p1[1] * (self.mainWindow.height / 2) + (self.mainWindow.height / 4),
             batch=self.batch,
             group=self.foreground,
             color=(0, 255, 0),
@@ -409,8 +406,8 @@ class Viewer(pyglet.window.Window):
 
         # Create a circle for P1
         self.p1Circle = pyglet.shapes.Circle(
-            self.p1[0] * (self.width / 2) + (self.width / 4),
-            self.p1[1] * (self.height / 2) + (self.height / 4),
+            self.p1[0] * (self.mainWindow.width / 2) + (self.mainWindow.width / 4),
+            self.p1[1] * (self.mainWindow.height / 2) + (self.mainWindow.height / 4),
             radius=10,
             color=(0, 255, 0),
             batch=self.batch,
@@ -419,10 +416,10 @@ class Viewer(pyglet.window.Window):
 
         # Create a line showing the P2 -> P3 control line
         self.p2p3Line = pyglet.shapes.Line(
-            self.p2[0] * (self.width / 2) + (self.width / 4),
-            self.p2[1] * (self.height / 2) + (self.height / 4),
-            self.p3[0] * (self.width / 2) + (self.width / 4),
-            self.p3[1] * (self.height / 2) + (self.height / 4),
+            self.p2[0] * (self.mainWindow.width / 2) + (self.mainWindow.width / 4),
+            self.p2[1] * (self.mainWindow.height / 2) + (self.mainWindow.height / 4),
+            self.p3[0] * (self.mainWindow.width / 2) + (self.mainWindow.width / 4),
+            self.p3[1] * (self.mainWindow.height / 2) + (self.mainWindow.height / 4),
             batch=self.batch,
             group=self.foreground,
             color=(0, 0, 255),
@@ -431,8 +428,8 @@ class Viewer(pyglet.window.Window):
 
         # Create a circle for P2
         self.p2Circle = pyglet.shapes.Circle(
-            self.p2[0] * (self.width / 2) + (self.width / 4),
-            self.p2[1] * (self.height / 2) + (self.height / 4),
+            self.p2[0] * (self.mainWindow.width / 2) + (self.mainWindow.width / 4),
+            self.p2[1] * (self.mainWindow.height / 2) + (self.mainWindow.height / 4),
             radius=10,
             color=(0, 0, 255),
             batch=self.batch,
@@ -480,14 +477,10 @@ class Viewer(pyglet.window.Window):
         # Check that image is not None
         if self.sprite:
             # Clear the existing screen
-            self.clear()
+            self.mainWindow.clear()
 
             # Draw the batch
             self.batch.draw()
-
-            # Draw the frames per second if enabled
-            if self.displayFps:
-                self.fpsDisplay.draw()
 
     def on_key_press(self, symbol, modifiers):
         if symbol == key.ESCAPE:
@@ -506,22 +499,16 @@ class Viewer(pyglet.window.Window):
                 return
         elif symbol == key.UP:
             # Open the file browser window with the current image parent path
-            if not self.fileBrowser:
-                self.fileBrowser = FileBrowser(self.images[self.currentImageIndex], self, self.SetupImagePathAndLoadImage, self.logQueue, self.fullScreenAllowed)
-            else:
-                self.fileBrowser.set_visible(True)
+            self.mainWindow.toggleViewer()
 
             # Ensure the mouse isn't hidden
             self._ShowMouse(False)
 
-            # Hide this window
-            self.set_visible(False)
-
             # Exit this handler
             return
-        elif symbol == key.F:
-            self.displayFps = not self.displayFps
-            return
+        # elif symbol == key.F:
+        #     self.displayFps = not self.displayFps
+        #     return
         elif self.direction is None:
             if symbol == key.RIGHT:
                 # Crop the image before setting the scroll direction
@@ -581,10 +568,10 @@ class Viewer(pyglet.window.Window):
                 self.xStartDrag, self.yStartDrag = self._ConstrainToSprite(self.mouseX, self.mouseY)
 
                 # Get the crosshair cursor
-                cursor = self.get_system_mouse_cursor(self.CURSOR_CROSSHAIR)
+                cursor = self.mainWindow.get_system_mouse_cursor(self.mainWindow.CURSOR_CROSSHAIR)
 
                 # Set the crosshair as the current cursor
-                self.set_mouse_cursor(cursor)
+                self.mainWindow.set_mouse_cursor(cursor)
 
                 # Show the mouse without autohiding
                 self._ShowMouse(False)
@@ -612,7 +599,7 @@ class Viewer(pyglet.window.Window):
             self.leftCommandHeld = False
 
             # Calling set mouse cursor with no parameter resets it to the default
-            self.set_mouse_cursor()
+            self.mainWindow.set_mouse_cursor()
 
             # Show the mouse when it moves, autohiding afterwards
             self._ShowMouse(True)
@@ -689,10 +676,10 @@ class Viewer(pyglet.window.Window):
                 self.rectangle = None
 
             # Get the hand cursor
-            cursor = self.get_system_mouse_cursor(self.CURSOR_HAND)
+            cursor = self.mainWindow.get_system_mouse_cursor(self.mainWindow.CURSOR_HAND)
 
             # Set the hand as the current cursor
-            self.set_mouse_cursor(cursor)
+            self.mainWindow.set_mouse_cursor(cursor)
         elif button == mouse.RIGHT:
             # Quit the application
             self.logQueue.put_nowait(('Exiting Pyglet application', logging.DEBUG))
@@ -703,7 +690,7 @@ class Viewer(pyglet.window.Window):
         self._ShowMouse(True)
 
         # Calling set mouse cursor with no parameter resets it to the default
-        self.set_mouse_cursor()
+        self.mainWindow.set_mouse_cursor()
 
         # Clear the circle dragging flags
         self.draggingP1Circle = False
@@ -724,14 +711,14 @@ class Viewer(pyglet.window.Window):
         # Constrain the point to the screen in x
         if x < 0:
             x = 0
-        elif x > self.width - 1:
-            x = self.width -1
+        elif x > self.mainWindow.width - 1:
+            x = self.mainWindow.width -1
 
         # Constrain the point to the screen in y
         if y < 0:
             y = 0
-        elif y > self.height - 1:
-            y = self.height -1
+        elif y > self.mainWindow.height - 1:
+            y = self.mainWindow.height -1
 
         # Return x and y as a tuple
         return x, y
@@ -749,8 +736,8 @@ class Viewer(pyglet.window.Window):
             self.p1Circle.position = self._ConstrainToScreen(self.p1Circle.x, self.p1Circle.y)
 
             # Work out the new P1 control point position
-            self.p1 = (2 * (((self.p1Circle.x - self.width / 4) / self.width)), 
-                2 * (((self.p1Circle.y - self.height / 4) / self.height)))
+            self.p1 = (2 * (((self.p1Circle.x - self.mainWindow.width / 4) / self.mainWindow.width)), 
+                2 * (((self.p1Circle.y - self.mainWindow.height / 4) / self.mainWindow.height)))
 
             # Update the Bezier curve
             self._CreateBezierCurve()
@@ -769,8 +756,8 @@ class Viewer(pyglet.window.Window):
             self.p2Circle.position = self._ConstrainToScreen(self.p2Circle.x, self.p2Circle.y)
 
             # Work out the new P1 control point position
-            self.p2 = (2 * (((self.p2Circle.x - self.width / 4) / self.width)),
-                2 * (((self.p2Circle.y - self.height / 4) / self.height)))
+            self.p2 = (2 * (((self.p2Circle.x - self.mainWindow.width / 4) / self.mainWindow.width)),
+                2 * (((self.p2Circle.y - self.mainWindow.height / 4) / self.mainWindow.height)))
 
             # Update the Bezier curve
             self._CreateBezierCurve()
@@ -786,3 +773,8 @@ class Viewer(pyglet.window.Window):
             if self.rectangle:
                 self.rectangle.delete()
                 self.rectangle = None
+
+    def on_resize(self, width, height):
+        # self.width = width
+        # self.height = height
+        self._ScaleImage()
