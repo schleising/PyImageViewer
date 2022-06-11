@@ -72,9 +72,8 @@ def LoadImage(imagePath: Path, containerSize):
             image = ImageData(fullImage.width, fullImage.height, mode, rawImage, -fullImage.width * formatLength)
 
     # Get a lock and, if the Process isn't shutting down, send the path and image back to the file browser
-    lock.acquire()
-    fromTS.put_nowait((imagePath, image))
-    lock.release()
+    with lock:
+        fromTS.put_nowait((imagePath, image))
 
 class ThumbnailServer(threading.Thread):
     def __init__(self, logQueue: queue.Queue) -> None:

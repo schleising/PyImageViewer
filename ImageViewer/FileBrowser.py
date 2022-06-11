@@ -266,9 +266,8 @@ class Container():
 
                 # Send a request to load the image at path, self._path is sent to allow matching the image to the container map
                 # A queue can only have one thread access a particular end, otherwise the data will be corrupt
-                self.lock.acquire()
-                self.toTS.put_nowait((self._path, self.imageSize))
-                self.lock.release()
+                with self.lock:
+                    self.toTS.put_nowait((self._path, self.imageSize))
         else:
             # Set the image loaded and image loading variables to False
             self.imageLoaded = False
@@ -494,18 +493,16 @@ class FileBrowser(Window):
         # Receive all the images we can from the thumbnail server if any are available
         while not queueEmpty:
             # Receive the image, getting a lock to ensure this end of the pipe is accessed by only one thread
-            # TODO: Replace all aquire/release pairs with context manager
-            self.queueLock.acquire()
-            try:
-                path, fullImage = self.fromTS.get_nowait()
-            except queue.Empty:
-                # Show that the queue is now empty
-                queueEmpty = True
+            with self.queueLock:
+                try:
+                    path, fullImage = self.fromTS.get_nowait()
+                except queue.Empty:
+                    # Show that the queue is now empty
+                    queueEmpty = True
 
-                # Initialise path and fullImage to None
-                path: Optional[str] = None
-                fullImage: Optional[ImageData] = None
-            self.queueLock.release()
+                    # Initialise path and fullImage to None
+                    path: Optional[str] = None
+                    fullImage: Optional[ImageData] = None
 
             # If the path is in the dictionary, call the container's ReceiveImage function
             if path is not None and fullImage is not None and path in self.thumbnailDict:
