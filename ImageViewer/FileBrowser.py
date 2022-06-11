@@ -17,10 +17,6 @@ from ImageViewer.Container import Container
 class FileBrowser():
     def __init__(self, inputPath: Path, mainWindow: Window, loadFunction: Callable[[Path], None], logQueue: queue.Queue) -> None:
 
-        # Set the initial width and height
-        self.width = mainWindow.width
-        self.height = mainWindow.height
-
         # Set the main window
         self.mainWindow = mainWindow
 
@@ -92,7 +88,7 @@ class FileBrowser():
             self.thumbnailDict.clear()
 
         # Work out the full thumbnail size (this is the size reserved for image and name)
-        thumbnailSize = self.width // self.thumbnailsPerRow
+        thumbnailSize = self.mainWindow.width // self.thumbnailsPerRow
 
         # Tell the sprite how big the container is
         Container.setContainerSize(thumbnailSize)
@@ -122,10 +118,10 @@ class FileBrowser():
         for count, path in enumerate(fullPathList):
             # Get the x and y of the thumbnail space
             xStart = thumbnailSize * (count % self.thumbnailsPerRow)
-            yStart = self.height - (thumbnailSize * ((count // self.thumbnailsPerRow) + 1))
+            yStart = self.mainWindow.height - (thumbnailSize * ((count // self.thumbnailsPerRow) + 1))
 
             # Create a sprite from the image and add it to the drawing batch
-            container = Container(xStart, yStart, self.height, self.batch, self.toTS, self.queueLock)
+            container = Container(xStart, yStart, self.mainWindow.height, self.batch, self.toTS, self.queueLock)
 
             # Add the path of the image or folder, this property will call _updateSprite triggering the thumbnail server to fetch the image
             container.path = path
@@ -279,9 +275,9 @@ class FileBrowser():
 
             # Scroll by this amount
             self.ScrollBrowser(scrollAmount)
-        elif newThumbnail.y + newThumbnail.containerSize > self.height:
+        elif newThumbnail.y + newThumbnail.containerSize > self.mainWindow.height:
             # If it is off the top, work out the scroll amount
-            scrollAmount = self.height - (newThumbnail.y + newThumbnail.containerSize)
+            scrollAmount = self.mainWindow.height - (newThumbnail.y + newThumbnail.containerSize)
 
             # Scroll by this amount
             self.ScrollBrowser(scrollAmount)
@@ -363,3 +359,8 @@ class FileBrowser():
 
             # Regenerate the thumbnails for the new folder
             self._GetThumbnails()
+
+    def on_resize(self, width, height):
+        # self.width = width
+        # self.height = height
+        pass

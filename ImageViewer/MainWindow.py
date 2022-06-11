@@ -130,3 +130,9 @@ class MainWindow(pyglet.window.Window):
         if self.viewerMode == ViewerMode.ImageViewerMode:
             self.viewer.on_mouse_drag(x, y, dx, dy, buttons, modifiers)
 
+    def on_resize(self, width, height):
+        if self.viewerMode == ViewerMode.ImageViewerMode:
+            self.viewer.on_resize(width, height)
+        else:
+            self.fileBrowser.on_resize(width, height)
+        return super().on_resize(width, height)

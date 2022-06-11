@@ -28,10 +28,6 @@ class Viewer():
         # event_logger = event.WindowEventLogger()
         # self.push_handlers(event_logger)
 
-        # Set the initial width and height
-        self.width = mainWindow.width
-        self.height = mainWindow.height
-
         # Set the main window
         self.mainWindow = mainWindow
 
@@ -156,25 +152,25 @@ class Viewer():
             self.imageCanBeSaved = False
 
         # Work out how much to scale each axis to fit into the screen
-        xScale = self.width / self.image.width
-        yScale = self.height / self.image.height
+        xScale = self.mainWindow.width / self.image.width
+        yScale = self.mainWindow.height / self.image.height
 
         # Both axes need to be scaled by the smallest number
         scalingFactor = min(xScale, yScale)
 
         # Calculate the x and y position needed to draw the image in the centre of the screen
-        xPos = self.width / 2 - (scalingFactor * self.image.width / 2)
-        yPos = self.height / 2 - (scalingFactor * self.image.height / 2)
+        xPos = self.mainWindow.width / 2 - (scalingFactor * self.image.width / 2)
+        yPos = self.mainWindow.height / 2 - (scalingFactor * self.image.height / 2)
 
         # Work out where in x we want the new image to stop scrolling in
         self.targetXPos = xPos
 
         if self.direction == Direction.Forward:
             # Work out the off screen x position for the new image to start
-            xPos = xPos + self.width
+            xPos = xPos + self.mainWindow.width
         elif self.direction == Direction.Back:
             # Work out the off screen x position for the new image to start
-            xPos = xPos - self.width
+            xPos = xPos - self.mainWindow.width
 
         # Store the starting position for use in calculating the transition
         self.startXPos = xPos
@@ -307,8 +303,8 @@ class Viewer():
                 screenX, screenY = 0, 0
 
                 # Get the screen width and height
-                screenWidth = self.width
-                screenHeight = self.height
+                screenWidth = self.mainWindow.width
+                screenHeight = self.mainWindow.height
             elif self.rectangle:
                 # Get the screen x and y coordinates of the rectangle
                 screenX, screenY = self.rectangle.position
@@ -321,8 +317,8 @@ class Viewer():
                 screenX, screenY = 0, 0
 
                 # Get the screen width and height
-                screenWidth = self.width
-                screenHeight = self.height
+                screenWidth = self.mainWindow.width
+                screenHeight = self.mainWindow.height
 
             # Ensure that the x and y of the rectangle are bottom left
             if screenWidth < 0:
@@ -381,10 +377,10 @@ class Viewer():
 
         # Create the Bezier curve
         self.bezierCurve = [pyglet.shapes.Line(
-            x1 * (self.width / 2) + (self.width / 4),
-            y1 * (self.height / 2) + (self.height / 4),
-            x2 * (self.width / 2) + (self.width / 4),
-            y2 * (self.height / 2) + (self.height / 4),
+            x1 * (self.mainWindow.width / 2) + (self.mainWindow.width / 4),
+            y1 * (self.mainWindow.height / 2) + (self.mainWindow.height / 4),
+            x2 * (self.mainWindow.width / 2) + (self.mainWindow.width / 4),
+            y2 * (self.mainWindow.height / 2) + (self.mainWindow.height / 4),
             batch=self.batch,
             group=self.foreground,
             color=(255, 0, 0),
@@ -393,10 +389,10 @@ class Viewer():
 
         # Create a line showing the P0 -> P1 control line
         self.p0p1Line = pyglet.shapes.Line(
-            self.p0[0] * (self.width / 2) + (self.width / 4),
-            self.p0[1] * (self.height / 2) + (self.height / 4),
-            self.p1[0] * (self.width / 2) + (self.width / 4),
-            self.p1[1] * (self.height / 2) + (self.height / 4),
+            self.p0[0] * (self.mainWindow.width / 2) + (self.mainWindow.width / 4),
+            self.p0[1] * (self.mainWindow.height / 2) + (self.mainWindow.height / 4),
+            self.p1[0] * (self.mainWindow.width / 2) + (self.mainWindow.width / 4),
+            self.p1[1] * (self.mainWindow.height / 2) + (self.mainWindow.height / 4),
             batch=self.batch,
             group=self.foreground,
             color=(0, 255, 0),
@@ -405,8 +401,8 @@ class Viewer():
 
         # Create a circle for P1
         self.p1Circle = pyglet.shapes.Circle(
-            self.p1[0] * (self.width / 2) + (self.width / 4),
-            self.p1[1] * (self.height / 2) + (self.height / 4),
+            self.p1[0] * (self.mainWindow.width / 2) + (self.mainWindow.width / 4),
+            self.p1[1] * (self.mainWindow.height / 2) + (self.mainWindow.height / 4),
             radius=10,
             color=(0, 255, 0),
             batch=self.batch,
@@ -415,10 +411,10 @@ class Viewer():
 
         # Create a line showing the P2 -> P3 control line
         self.p2p3Line = pyglet.shapes.Line(
-            self.p2[0] * (self.width / 2) + (self.width / 4),
-            self.p2[1] * (self.height / 2) + (self.height / 4),
-            self.p3[0] * (self.width / 2) + (self.width / 4),
-            self.p3[1] * (self.height / 2) + (self.height / 4),
+            self.p2[0] * (self.mainWindow.width / 2) + (self.mainWindow.width / 4),
+            self.p2[1] * (self.mainWindow.height / 2) + (self.mainWindow.height / 4),
+            self.p3[0] * (self.mainWindow.width / 2) + (self.mainWindow.width / 4),
+            self.p3[1] * (self.mainWindow.height / 2) + (self.mainWindow.height / 4),
             batch=self.batch,
             group=self.foreground,
             color=(0, 0, 255),
@@ -427,8 +423,8 @@ class Viewer():
 
         # Create a circle for P2
         self.p2Circle = pyglet.shapes.Circle(
-            self.p2[0] * (self.width / 2) + (self.width / 4),
-            self.p2[1] * (self.height / 2) + (self.height / 4),
+            self.p2[0] * (self.mainWindow.width / 2) + (self.mainWindow.width / 4),
+            self.p2[1] * (self.mainWindow.height / 2) + (self.mainWindow.height / 4),
             radius=10,
             color=(0, 0, 255),
             batch=self.batch,
@@ -710,14 +706,14 @@ class Viewer():
         # Constrain the point to the screen in x
         if x < 0:
             x = 0
-        elif x > self.width - 1:
-            x = self.width -1
+        elif x > self.mainWindow.width - 1:
+            x = self.mainWindow.width -1
 
         # Constrain the point to the screen in y
         if y < 0:
             y = 0
-        elif y > self.height - 1:
-            y = self.height -1
+        elif y > self.mainWindow.height - 1:
+            y = self.mainWindow.height -1
 
         # Return x and y as a tuple
         return x, y
@@ -735,8 +731,8 @@ class Viewer():
             self.p1Circle.position = self._ConstrainToScreen(self.p1Circle.x, self.p1Circle.y)
 
             # Work out the new P1 control point position
-            self.p1 = (2 * (((self.p1Circle.x - self.width / 4) / self.width)), 
-                2 * (((self.p1Circle.y - self.height / 4) / self.height)))
+            self.p1 = (2 * (((self.p1Circle.x - self.mainWindow.width / 4) / self.mainWindow.width)), 
+                2 * (((self.p1Circle.y - self.mainWindow.height / 4) / self.mainWindow.height)))
 
             # Update the Bezier curve
             self._CreateBezierCurve()
@@ -755,8 +751,8 @@ class Viewer():
             self.p2Circle.position = self._ConstrainToScreen(self.p2Circle.x, self.p2Circle.y)
 
             # Work out the new P1 control point position
-            self.p2 = (2 * (((self.p2Circle.x - self.width / 4) / self.width)),
-                2 * (((self.p2Circle.y - self.height / 4) / self.height)))
+            self.p2 = (2 * (((self.p2Circle.x - self.mainWindow.width / 4) / self.mainWindow.width)),
+                2 * (((self.p2Circle.y - self.mainWindow.height / 4) / self.mainWindow.height)))
 
             # Update the Bezier curve
             self._CreateBezierCurve()
@@ -772,3 +768,8 @@ class Viewer():
             if self.rectangle:
                 self.rectangle.delete()
                 self.rectangle = None
+
+    def on_resize(self, width, height):
+        # self.width = width
+        # self.height = height
+        pass
