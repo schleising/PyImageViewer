@@ -6,7 +6,7 @@ import math
 from pathlib import Path
 import time
 from typing import Optional
-import multiprocessing as mp
+import queue
 
 import pyglet
 from pyglet.window import key, FPSDisplay, mouse
@@ -21,7 +21,7 @@ class Direction(Enum):
     Back = auto()
 
 class Viewer(pyglet.window.Window):
-    def __init__(self, logQueue: mp.Queue, fullScreenAllowed = False) -> None:
+    def __init__(self, logQueue: queue.Queue, fullScreenAllowed = False) -> None:
         # Call base class init
         super(Viewer, self).__init__()
 

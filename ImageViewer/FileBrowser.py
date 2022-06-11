@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
-from multiprocessing import Lock, Queue
-from multiprocessing.connection import Connection
+import threading
+import queue
 from typing import Callable, Optional
 
 import pyglet
@@ -39,7 +39,7 @@ class Container():
     # Set the folder image to None
     folderImage = None
 
-    def __init__(self, x: int, y: int, screenHeight: int, batch: Batch, childConn: Connection, lock):
+    def __init__(self, x: int, y: int, screenHeight: int, batch: Batch, toTS: queue.Queue, lock):
         # The path this thumbnail represents
         self._path: Path = Path()
 
@@ -64,8 +64,8 @@ class Container():
         # Check whether we are loading an image
         self.imageLoading = False
 
-        # Pipe to send image load requests
-        self.childConn = childConn
+        # Queue to send image load requests
+        self.toTS = toTS
 
         # Lock for the pipe
         self.lock = lock
@@ -265,9 +265,9 @@ class Container():
                 self.imageLoading = True
 
                 # Send a request to load the image at path, self._path is sent to allow matching the image to the container map
-                # A pipe can only have one thread access a particular end, otherwise the data will be corrupt
+                # A queue can only have one thread access a particular end, otherwise the data will be corrupt
                 self.lock.acquire()
-                self.childConn.send((self._path, self.imageSize))
+                self.toTS.put_nowait((self._path, self.imageSize))
                 self.lock.release()
         else:
             # Set the image loaded and image loading variables to False
@@ -352,7 +352,7 @@ class Container():
             self.gridLines.clear()
 
 class FileBrowser(Window):
-    def __init__(self, inputPath: Path, viewerWindow: Window, loadFunction: Callable[[Path], None], logQueue: Queue, fullScreenAllowed: bool) -> None:
+    def __init__(self, inputPath: Path, viewerWindow: Window, loadFunction: Callable[[Path], None], logQueue: queue.Queue, fullScreenAllowed: bool) -> None:
         # Call base class init
         super(FileBrowser, self).__init__()
 
@@ -381,11 +381,14 @@ class FileBrowser(Window):
         self.thumbnailServer = ThumbnailServer(self.logQueue)
         self.thumbnailServer.start()
 
-        # Get the pipe child connection
-        self.childConn = self.thumbnailServer.childConn
+        # Get the queue to send data to the Thumbnail Server
+        self.toTS = self.thumbnailServer.toTS
 
-        # Lock access to the pipe such that only one thread reads at a time
-        self.pipeLock = Lock()
+        # Get the queue to receive data from the Thumbnail Server
+        self.fromTS = self.thumbnailServer.fromTS
+
+        # Lock access to the queue such that only one thread reads at a time
+        self.queueLock = threading.Lock()
 
         # Controls for vertical scrolling to ensure the scroll remains in bounds
         self.scrollableAmount = 0
@@ -467,7 +470,7 @@ class FileBrowser(Window):
             yStart = self.height - (thumbnailSize * ((count // self.thumbnailsPerRow) + 1))
 
             # Create a sprite from the image and add it to the drawing batch
-            container = Container(xStart, yStart, self.height, self.batch, self.childConn, self.pipeLock)
+            container = Container(xStart, yStart, self.height, self.batch, self.toTS, self.queueLock)
 
             # Add the path of the image or folder, this property will call _updateSprite triggering the thumbnail server to fetch the image
             container.path = path
@@ -486,11 +489,13 @@ class FileBrowser(Window):
 
     def ReceiveImages(self, dt) -> None:
         # Receive all the images we can from the thumbnail server if any are available
-        while self.childConn.poll():
+        # TODO: Repace call to empty with check for queue.Empty exception
+        while not self.fromTS.empty():
             # Receive the image, getting a lock to ensure this end of the pipe is accessed by only one thread
-            self.pipeLock.acquire()
-            path, fullImage = self.childConn.recv()
-            self.pipeLock.release()
+            # TODO: Replace all aquire/release pairs with context manager
+            self.queueLock.acquire()
+            path, fullImage = self.fromTS.get()
+            self.queueLock.release()
 
             # If the path is in the dictionary, call the container's ReceiveImage function
             if path in self.thumbnailDict:
