@@ -17,7 +17,7 @@ class ViewerMode(Enum):
 class ImageViewer(pyglet.window.Window):
     def __init__(self, fullScreenAllowed: bool) -> None:
         # Call base class init
-        super(ImageViewer, self).__init__(resizable=True)
+        super(ImageViewer, self).__init__(resizable=True, width=1280, height=720)
 
         # Create a logger instance
         logger = Logger()
