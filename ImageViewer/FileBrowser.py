@@ -488,17 +488,27 @@ class FileBrowser(Window):
         list(self.thumbnailDict.values())[self.highlightedImageIndex].highlighted = True
 
     def ReceiveImages(self, dt) -> None:
+        # Assume that the queue is not empty
+        queueEmpty = False
+
         # Receive all the images we can from the thumbnail server if any are available
-        # TODO: Repace call to empty with check for queue.Empty exception
-        while not self.fromTS.empty():
+        while not queueEmpty:
             # Receive the image, getting a lock to ensure this end of the pipe is accessed by only one thread
             # TODO: Replace all aquire/release pairs with context manager
             self.queueLock.acquire()
-            path, fullImage = self.fromTS.get()
+            try:
+                path, fullImage = self.fromTS.get_nowait()
+            except queue.Empty:
+                # Show that the queue is now empty
+                queueEmpty = True
+
+                # Initialise path and fullImage to None
+                path: Optional[str] = None
+                fullImage: Optional[ImageData] = None
             self.queueLock.release()
 
             # If the path is in the dictionary, call the container's ReceiveImage function
-            if path in self.thumbnailDict:
+            if path is not None and fullImage is not None and path in self.thumbnailDict:
                 self.thumbnailDict[path].ReceiveImage(fullImage)
 
         # Check if any containers are waiting for images
