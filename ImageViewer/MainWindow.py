@@ -17,7 +17,7 @@ class ViewerMode(Enum):
 class MainWindow(pyglet.window.Window):
     def __init__(self, fullScreenAllowed: bool) -> None:
         # Call base class init
-        super(MainWindow, self).__init__(resizable=True, width=1280, height=720)
+        super(MainWindow, self).__init__(resizable=True, width=1280, height=720, style=pyglet.window.Window.WINDOW_STYLE_BORDERLESS)
 
         # Create a logger instance
         logger = Logger()
@@ -52,12 +52,9 @@ class MainWindow(pyglet.window.Window):
             # If it's a folder start in the browser in this folder
             self.viewerMode = ViewerMode.FileBrowserMode
 
-        # Control whether the windows are allowed to be full screen
-        self.fullScreenAllowed = fullScreenAllowed
-
         # # Set window to full screen
-        # if self.fullScreenAllowed:
-        #     self.maximize()
+        if fullScreenAllowed:
+            self.maximize()
 
         # Create a viewer
         self.viewer = Viewer(self, logQueue)
