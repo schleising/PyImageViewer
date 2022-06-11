@@ -8,73 +8,6 @@ from PIL import Image
 
 from pyglet.image import ImageData
 
-def poolInitialiser(inputLock: threading.Lock, inToTS: queue.Queue, inFromTS: queue.Queue, inLogQueue: queue.Queue) -> None:
-    # Global variables to ensure they are shared between processes
-    # TODO: I think this can now be removed
-    global lock
-    global toTS
-    global fromTS
-    global logQueue
-
-    # Lock for pipe access
-    lock = inputLock
-
-    # The queue to send to the Thumbnail Server
-    toTS = inToTS
-
-    # The queue to send from the Thumbnail Serveer
-    fromTS = inFromTS
-
-    # The log queue
-    logQueue = inLogQueue
-
-    # Log that the pools are initialising
-    log('Initialising Pools', logging.DEBUG)
-
-def log(message: str, level: int) -> None:
-    # Send the message and level to the log queue
-    logQueue.put_nowait((message, level))
-
-def LoadImage(imagePath: Path, containerSize):
-    # Try to load the image
-    try:
-        fullImage = Image.open(imagePath)
-    except:
-        # If the image cannot be loaded, log the error
-        log(f'Loading {imagePath.name} Failed', logging.WARN)
-
-        # Set image to None, this needs to be handled by the receiving end
-        image = None
-    else:
-        try:
-            # Create a thumnail of the image
-            fullImage.thumbnail((containerSize, containerSize))
-        except:
-            # If the image cannot be loaded, log the error
-            log(f'Failed to Create Thumbnail for {imagePath.name}', logging.WARN)
-
-            # Set image to None, this needs to be handled by the receiving end
-            image = None
-        else:
-            # Log that the image loaded as the thumbnail was created
-            log(f'{imagePath.name} Loaded and Thumbnail Created', logging.DEBUG)
-
-            # Get the mode (e.g., 'RGBA')
-            mode = fullImage.mode
-
-            # Get the number of bytes per pixel
-            formatLength = len(mode) if mode else 4
-
-            # Convert the image to bytes
-            rawImage = fullImage.tobytes()
-
-            # Create a Pyglet ImageData object from the bytes
-            image = ImageData(fullImage.width, fullImage.height, mode, rawImage, -fullImage.width * formatLength)
-
-    # Get a lock and, if the Process isn't shutting down, send the path and image back to the file browser
-    with lock:
-        fromTS.put_nowait((imagePath, image))
-
 class ThumbnailServer(threading.Thread):
     def __init__(self, logQueue: queue.Queue) -> None:
         super(ThumbnailServer, self).__init__()
@@ -93,12 +26,9 @@ class ThumbnailServer(threading.Thread):
 
     def run(self) -> None:
         # Start a process pool to load and thumbnail the images
-        with concurrent.futures.ThreadPoolExecutor(initializer=poolInitialiser, initargs=(self.lock, self.toTS, self.fromTS, self.logQueue)) as pool:
-            # Initialise the global data (queues, locks, pipes)
-            poolInitialiser(self.lock, self.toTS, self.fromTS, self.logQueue)
-
+        with concurrent.futures.ThreadPoolExecutor() as pool:
             # Log that the server has started
-            log('Starting Thumbnail Server', logging.DEBUG)
+            self.log('Starting Thumbnail Server', logging.DEBUG)
 
             # Run until told to stop
             while True:
@@ -107,7 +37,51 @@ class ThumbnailServer(threading.Thread):
 
                 if imagePath is not None and containerSize is not None:
                     # Add a job to the process pool to load and thumbnail the image
-                    pool.submit(LoadImage, imagePath, containerSize)
+                    pool.submit(self.LoadImage, imagePath, containerSize)
                 else:
                     # If the application is closing, exit  the loop
                     break
+
+    def log(self, message: str, level: int) -> None:
+        # Send the message and level to the log queue
+        self.logQueue.put_nowait((message, level))
+
+    def LoadImage(self, imagePath: Path, containerSize):
+        # Try to load the image
+        try:
+            fullImage = Image.open(imagePath)
+        except:
+            # If the image cannot be loaded, log the error
+            self.log(f'Loading {imagePath.name} Failed', logging.WARN)
+
+            # Set image to None, this needs to be handled by the receiving end
+            image = None
+        else:
+            try:
+                # Create a thumnail of the image
+                fullImage.thumbnail((containerSize, containerSize))
+            except:
+                # If the image cannot be loaded, log the error
+                self.log(f'Failed to Create Thumbnail for {imagePath.name}', logging.WARN)
+
+                # Set image to None, this needs to be handled by the receiving end
+                image = None
+            else:
+                # Log that the image loaded as the thumbnail was created
+                self.log(f'{imagePath.name} Loaded and Thumbnail Created', logging.DEBUG)
+
+                # Get the mode (e.g., 'RGBA')
+                mode = fullImage.mode
+
+                # Get the number of bytes per pixel
+                formatLength = len(mode) if mode else 4
+
+                # Convert the image to bytes
+                rawImage = fullImage.tobytes()
+
+                # Create a Pyglet ImageData object from the bytes
+                image = ImageData(fullImage.width, fullImage.height, mode, rawImage, -fullImage.width * formatLength)
+
+        # Get a lock and, if the Process isn't shutting down, send the path and image back to the file browser
+        with self.lock:
+            self.fromTS.put_nowait((imagePath, image))
