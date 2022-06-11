@@ -505,9 +505,9 @@ class Viewer():
 
             # Exit this handler
             return
-        elif symbol == key.F:
-            self.displayFps = not self.displayFps
-            return
+        # elif symbol == key.F:
+        #     self.displayFps = not self.displayFps
+        #     return
         elif self.direction is None:
             if symbol == key.RIGHT:
                 # Crop the image before setting the scroll direction

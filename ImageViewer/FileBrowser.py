@@ -263,9 +263,9 @@ class FileBrowser():
         elif symbol == key.ENTER:
             # Load the currently highlighted image or folder
             self.LoadImage(list(self.thumbnailDict.values())[self.highlightedImageIndex].path)
-        elif symbol == key.F:
-            # Toggle display of the FPS
-            self.displayFps = not self.displayFps
+        # elif symbol == key.F:
+        #     # Toggle display of the FPS
+        #     self.displayFps = not self.displayFps
         elif symbol == key.G:
             for thumbnail in self.thumbnailDict.values():
                 # Toggle display of gridlines
