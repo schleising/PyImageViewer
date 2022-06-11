@@ -17,7 +17,7 @@ class ViewerMode(Enum):
 class ImageViewer(pyglet.window.Window):
     def __init__(self, fullScreenAllowed: bool) -> None:
         # Call base class init
-        super(ImageViewer, self).__init__()
+        super(ImageViewer, self).__init__(resizable=True)
 
         # Create a logger instance
         logger = Logger()
@@ -55,14 +55,15 @@ class ImageViewer(pyglet.window.Window):
         # Control whether the windows are allowed to be full screen
         self.fullScreenAllowed = fullScreenAllowed
 
-        # Set window to full screen
-        self.set_fullscreen(self.fullScreenAllowed)
+        # # Set window to full screen
+        # if self.fullScreenAllowed:
+        #     self.maximize()
 
         # Create a viewer
-        self.viewer = Viewer(self.width, self.height, self, logQueue)
+        self.viewer = Viewer(self, logQueue)
 
         # Create a file browser
-        self.fileBrowser = FileBrowser(imagePath, self.width, self.height, self, self.viewer.SetupImagePathAndLoadImage, logQueue)
+        self.fileBrowser = FileBrowser(imagePath, self, self.viewer.SetupImagePathAndLoadImage, logQueue)
 
         # Let the viewer have access to the file browser
         self.viewer.fileBrowser = self.fileBrowser

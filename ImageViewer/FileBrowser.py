@@ -15,11 +15,11 @@ from ImageViewer.Container import Container
 # from ImageViewer.ImageViewer import ImageViewer
 
 class FileBrowser():
-    def __init__(self, inputPath: Path, width: int, height: int, mainWindow: Window, loadFunction: Callable[[Path], None], logQueue: queue.Queue) -> None:
+    def __init__(self, inputPath: Path, mainWindow: Window, loadFunction: Callable[[Path], None], logQueue: queue.Queue) -> None:
 
         # Set the initial width and height
-        self.width = width
-        self.height = height
+        self.width = mainWindow.width
+        self.height = mainWindow.height
 
         # Set the main window
         self.mainWindow = mainWindow

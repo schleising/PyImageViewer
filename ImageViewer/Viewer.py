@@ -22,15 +22,15 @@ class Direction(Enum):
     Back = auto()
 
 class Viewer():
-    def __init__(self, width: int, height: int, mainWindow: Window, logQueue: queue.Queue) -> None:
+    def __init__(self, mainWindow: Window, logQueue: queue.Queue) -> None:
 
         # Add an event logger
         # event_logger = event.WindowEventLogger()
         # self.push_handlers(event_logger)
 
         # Set the initial width and height
-        self.width = width
-        self.height = height
+        self.width = mainWindow.width
+        self.height = mainWindow.height
 
         # Set the main window
         self.mainWindow = mainWindow
