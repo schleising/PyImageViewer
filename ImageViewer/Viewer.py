@@ -151,42 +151,47 @@ class Viewer():
             self.image = pyglet.image.load(self.images[self.currentImageIndex])
             self.imageCanBeSaved = False
 
-        # Work out how much to scale each axis to fit into the screen
-        xScale = self.mainWindow.width / self.image.width
-        yScale = self.mainWindow.height / self.image.height
+        # Scale and position the image to fit the window
+        self._ScaleImage()
 
-        # Both axes need to be scaled by the smallest number
-        scalingFactor = min(xScale, yScale)
+    def _ScaleImage(self) -> None:
+        if self.image:
+            # Work out how much to scale each axis to fit into the screen
+            xScale = self.mainWindow.width / self.image.width
+            yScale = self.mainWindow.height / self.image.height
 
-        # Calculate the x and y position needed to draw the image in the centre of the screen
-        xPos = self.mainWindow.width / 2 - (scalingFactor * self.image.width / 2)
-        yPos = self.mainWindow.height / 2 - (scalingFactor * self.image.height / 2)
+            # Both axes need to be scaled by the smallest number
+            scalingFactor = min(xScale, yScale)
 
-        # Work out where in x we want the new image to stop scrolling in
-        self.targetXPos = xPos
+            # Calculate the x and y position needed to draw the image in the centre of the screen
+            xPos = self.mainWindow.width / 2 - (scalingFactor * self.image.width / 2)
+            yPos = self.mainWindow.height / 2 - (scalingFactor * self.image.height / 2)
 
-        if self.direction == Direction.Forward:
-            # Work out the off screen x position for the new image to start
-            xPos = xPos + self.mainWindow.width
-        elif self.direction == Direction.Back:
-            # Work out the off screen x position for the new image to start
-            xPos = xPos - self.mainWindow.width
+            # Work out where in x we want the new image to stop scrolling in
+            self.targetXPos = xPos
 
-        # Store the starting position for use in calculating the transition
-        self.startXPos = xPos
+            if self.direction == Direction.Forward:
+                # Work out the off screen x position for the new image to start
+                xPos = xPos + self.mainWindow.width
+            elif self.direction == Direction.Back:
+                # Work out the off screen x position for the new image to start
+                xPos = xPos - self.mainWindow.width
 
-        # Create a sprite containing the image at the calculated x, y position
-        self.sprite = pyglet.sprite.Sprite(img=self.image, x=xPos, y=yPos, batch=self.batch, group=self.background)
+            # Store the starting position for use in calculating the transition
+            self.startXPos = xPos
 
-        # Scale the sprite
-        self.sprite.scale = scalingFactor
+            # Create a sprite containing the image at the calculated x, y position
+            self.sprite = pyglet.sprite.Sprite(img=self.image, x=xPos, y=yPos, batch=self.batch, group=self.background)
 
-        # Hide the mouse immediately
-        self._HideMouse()
+            # Scale the sprite
+            self.sprite.scale = scalingFactor
 
-        if self.direction is not None:
-            # Schedule an animation frame at the desired frame rate
-            pyglet.clock.schedule_interval(self._AnimateNewImage, 1 / self.fps)
+            # Hide the mouse immediately
+            self._HideMouse()
+
+            if self.direction is not None:
+                # Schedule an animation frame at the desired frame rate
+                pyglet.clock.schedule_interval(self._AnimateNewImage, 1 / self.fps)
 
     def _CalculateBezierPoint(self, t: float) -> tuple[float, float]:
         # Initialise the returned point to 0, 0
@@ -772,4 +777,4 @@ class Viewer():
     def on_resize(self, width, height):
         # self.width = width
         # self.height = height
-        pass
+        self._ScaleImage()
