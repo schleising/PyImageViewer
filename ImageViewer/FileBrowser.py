@@ -5,24 +5,27 @@ import queue
 from typing import Callable, Optional
 
 import pyglet
-from pyglet.window import key, Window, FPSDisplay, mouse
+from pyglet.window import key, mouse, Window
 from pyglet.graphics import Batch
 from pyglet.image import ImageData
 
 from ImageViewer.FileTypes import supportedExtensions
 from ImageViewer.ThumbnailServer import ThumbnailServer
 from ImageViewer.Container import Container
+# from ImageViewer.ImageViewer import ImageViewer
 
-class FileBrowser(Window):
-    def __init__(self, inputPath: Path, viewerWindow: Window, loadFunction: Callable[[Path], None], logQueue: queue.Queue, fullScreenAllowed: bool) -> None:
-        # Call base class init
-        super(FileBrowser, self).__init__()
+class FileBrowser():
+    def __init__(self, inputPath: Path, width: int, height: int, mainWindow: Window, loadFunction: Callable[[Path], None], logQueue: queue.Queue) -> None:
+
+        # Set the initial width and height
+        self.width = width
+        self.height = height
+
+        # Set the main window
+        self.mainWindow = mainWindow
 
         # Set the log queue
         self.logQueue = logQueue
-
-        # Set the viewer window so that we can control it before closing this one
-        self.viewerWindow = viewerWindow
 
         # Set the load function so we can lod the newly chosen image in the viewer
         self.loadFunction: Callable[[Path], None] = loadFunction
@@ -32,12 +35,6 @@ class FileBrowser(Window):
 
         # Set the path of the input, getting the parent folder if this is actually a file
         self.inputPath = inputPath.parent if inputPath.is_file() else inputPath
-
-        # Control whether the windows are allowed to be full screen
-        self.fullScreenAllowed = fullScreenAllowed
-
-        # Get the screen width and height
-        self.set_fullscreen(self.fullScreenAllowed)
 
         # Create and start the thumbnail server and get the request queue and lock
         self.thumbnailServer = ThumbnailServer(self.logQueue)
@@ -61,10 +58,6 @@ class FileBrowser(Window):
 
         # Log that the browser has opened
         self.logQueue.put_nowait(('Opened FileBrowser', logging.DEBUG))
-
-        # Control for drawing the FPS
-        self.displayFps = False
-        self.fpsDisplay = FPSDisplay(self)
 
         # The batch to insert the sprites
         self.batch = Batch()
@@ -99,7 +92,7 @@ class FileBrowser(Window):
             self.thumbnailDict.clear()
 
         # Work out the full thumbnail size (this is the size reserved for image and name)
-        thumbnailSize = self.width / self.thumbnailsPerRow
+        thumbnailSize = self.width // self.thumbnailsPerRow
 
         # Tell the sprite how big the container is
         Container.setContainerSize(thumbnailSize)
@@ -181,21 +174,9 @@ class FileBrowser(Window):
             # Log that the browser window is closing
             self.logQueue.put_nowait(('Closing File Browser', logging.DEBUG))
 
-            if self.imageViewerInitialised:
-                # Set the viewer window back to full screen
-                self.viewerWindow.set_fullscreen(self.viewerWindow.fullScreenAllowed)
+            # Exit the application
+            pyglet.app.exit()
 
-                # Activate the viewer window to ensure it has focus
-                self.viewerWindow.activate()
-
-                # Show the viewer windoes
-                self.viewerWindow.set_visible(True)
-
-                # Hide this browser window
-                self.set_visible(False)
-            else:
-                # If the viewer was never initialised, exit the application
-                pyglet.app.exit()
         elif symbol == key.UP:
             if modifiers & key.MOD_SHIFT:
                 # Update the path with the parent folder path
@@ -307,14 +288,10 @@ class FileBrowser(Window):
 
     def on_draw(self):
         # Clear the display
-        self.clear()
+        self.mainWindow.clear()
 
         # Draw the sprites
         self.batch.draw()
-
-        # Display the FPS if enabled
-        if self.displayFps:
-            self.fpsDisplay.draw()
 
     def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
         # Check that there has been enough of a scroll to be worth registering
@@ -366,41 +343,20 @@ class FileBrowser(Window):
             # Log that the browser window is closing
             self.logQueue.put_nowait(('Closing File Browser', logging.DEBUG))
 
-            if self.imageViewerInitialised:
-                # Set the viewer window back to full screen
-                self.viewerWindow.set_fullscreen(self.viewerWindow.fullScreenAllowed)
-
-                # Activate the viewer window to ensure it has focus
-                self.viewerWindow.activate()
-
-                # Show the viewer windoes
-                self.viewerWindow.set_visible(True)
-
-                # Hide this browser window
-                self.set_visible(False)
-            else:
-                # If the viewer was never initialised, exit the application
-                pyglet.app.exit()
+            # Exit the application
+            pyglet.app.exit()
 
     def LoadImage(self, imagePath: Path) -> None:
         if imagePath.is_file():
             # If this is a file, log that the browser window will close
             self.logQueue.put_nowait(('Closing File Browser due to click', logging.DEBUG))
 
-            # Set the viewer back to full screen
-            self.viewerWindow.set_fullscreen(self.viewerWindow.fullScreenAllowed)
-
-            # Show the viewer window
-            self.viewerWindow.set_visible(True)
-
             # Load the new image in the viewer window
             self.loadFunction(imagePath)
 
-            # Hide this window
-            self.set_visible(False)
+            # Set the viewer back to full screen
+            self.mainWindow.toggleViewer()
 
-            # Activate the viewer window
-            self.viewerWindow.activate()
         else:
             # If this is a folder, update the path with the new folder path
             self.inputPath = imagePath

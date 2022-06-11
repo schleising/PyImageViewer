@@ -1,3 +1,4 @@
+from enum import Enum, auto
 import sys
 import logging
 from pathlib import Path
@@ -9,8 +10,15 @@ from ImageViewer.FileBrowser import FileBrowser
 from ImageViewer.FileTypes import supportedExtensions
 from ImageViewer.Logger import Logger
 
-class ImageViewer:
+class ViewerMode(Enum):
+    FileBrowserMode = auto()
+    ImageViewerMode = auto()
+
+class ImageViewer(pyglet.window.Window):
     def __init__(self, fullScreenAllowed: bool) -> None:
+        # Call base class init
+        super(ImageViewer, self).__init__()
+
         # Create a logger instance
         logger = Logger()
 
@@ -35,48 +43,33 @@ class ImageViewer:
         if imagePath.is_file():
             if imagePath.suffix.lower() in supportedExtensions.values():
                 # If it's an image file start directly in the viewer
-                startInViewer = True
+                self.viewerMode = ViewerMode.ImageViewerMode
             else:
                 # If it's not and image file, start the file browser in the parent of this file
                 imagePath = imagePath.parent
-                startInViewer = False
+                self.viewerMode = ViewerMode.FileBrowserMode
         else:
             # If it's a folder start in the browser in this folder
-            startInViewer = False
+            self.viewerMode = ViewerMode.FileBrowserMode
 
         # Control whether the windows are allowed to be full screen
         self.fullScreenAllowed = fullScreenAllowed
 
+        # Set window to full screen
+        self.set_fullscreen(self.fullScreenAllowed)
+
         # Create a viewer
-        self.viewer = Viewer(logQueue, self.fullScreenAllowed)
+        self.viewer = Viewer(self.width, self.height, self, logQueue)
 
         # Create a file browser
-        self.fileBrowser = FileBrowser(imagePath, self.viewer, self.viewer.SetupImagePathAndLoadImage, logQueue, self.fullScreenAllowed)
+        self.fileBrowser = FileBrowser(imagePath, self.width, self.height, self, self.viewer.SetupImagePathAndLoadImage, logQueue)
 
         # Let the viewer have access to the file browser
         self.viewer.fileBrowser = self.fileBrowser
 
-        if startInViewer:
+        if self.viewerMode == ViewerMode.ImageViewerMode:
             # If we're starting in the viewer load the image
             self.viewer.SetupImagePathAndLoadImage(imagePath)
-
-            # Hide the browser
-            self.fileBrowser.set_visible(False)
-
-            # Set the viewer to visible
-            self.viewer.set_visible(True)
-
-            # Activate the viewer window
-            self.viewer.activate()
-        else:
-            # Hide the viewer
-            self.viewer.set_visible(False)
-
-            # Show the file browser
-            self.fileBrowser.set_visible(True)
-
-            # Activate the file browser
-            self.fileBrowser.activate()
 
         # Log that the main loop is starting
         logQueue.put_nowait(('Starting Pyglet mainloop', logging.DEBUG))
@@ -89,3 +82,50 @@ class ImageViewer:
 
         # Log that the application is closing
         logQueue.put_nowait(('Exiting', logging.INFO))
+
+    def toggleViewer(self) -> None:
+        if self.viewerMode == ViewerMode.FileBrowserMode:
+            self.viewerMode = ViewerMode.ImageViewerMode
+        else:
+            self.viewerMode = ViewerMode.FileBrowserMode
+
+    def on_draw(self):
+        if self.viewerMode == ViewerMode.ImageViewerMode:
+            self.viewer.on_draw()
+        else:
+            self.fileBrowser.on_draw()
+
+    def on_key_press(self, symbol, modifiers):
+        if self.viewerMode == ViewerMode.ImageViewerMode:
+            self.viewer.on_key_press(symbol, modifiers)
+        else:
+            self.fileBrowser.on_key_press(symbol, modifiers)
+
+    def on_key_release(self, symbol, modifiers):
+        if self.viewerMode == ViewerMode.ImageViewerMode:
+            self.viewer.on_key_release(symbol, modifiers)
+
+    def on_mouse_motion(self, x, y, dx, dy):
+        if self.viewerMode == ViewerMode.ImageViewerMode:
+            self.viewer.on_mouse_motion(x, y, dx, dy)
+
+    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+        if self.viewerMode == ViewerMode.ImageViewerMode:
+            self.viewer.on_mouse_scroll(x, y, scroll_x, scroll_y)
+        else:
+            self.fileBrowser.on_mouse_scroll(x, y, scroll_x, scroll_y)
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        if self.viewerMode == ViewerMode.ImageViewerMode:
+            self.viewer.on_mouse_press(x, y, button, modifiers)
+        else:
+            self.fileBrowser.on_mouse_press(x, y, button, modifiers)
+
+    def on_mouse_release(self, x, y, button, modifiers):
+        if self.viewerMode == ViewerMode.ImageViewerMode:
+            self.viewer.on_mouse_release(x, y, button, modifiers)
+
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+        if self.viewerMode == ViewerMode.ImageViewerMode:
+            self.viewer.on_mouse_drag(x, y, dx, dy, buttons, modifiers)
+

@@ -9,25 +9,31 @@ from typing import Optional
 import queue
 
 import pyglet
-from pyglet.window import key, FPSDisplay, mouse
+from pyglet.window import key, mouse, Window
 from pyglet.sprite import Sprite
 from pyglet.image import ImageData, ImageDataRegion
 from ImageViewer.FileBrowser import FileBrowser
 
 from ImageViewer.FileTypes import supportedExtensions
+# from ImageViewer.ImageViewer import ImageViewer
 
 class Direction(Enum):
     Forward = auto()
     Back = auto()
 
-class Viewer(pyglet.window.Window):
-    def __init__(self, logQueue: queue.Queue, fullScreenAllowed = False) -> None:
-        # Call base class init
-        super(Viewer, self).__init__()
+class Viewer():
+    def __init__(self, width: int, height: int, mainWindow: Window, logQueue: queue.Queue) -> None:
 
         # Add an event logger
         # event_logger = event.WindowEventLogger()
         # self.push_handlers(event_logger)
+
+        # Set the initial width and height
+        self.width = width
+        self.height = height
+
+        # Set the main window
+        self.mainWindow = mainWindow
 
         # Set the log queue
         self.logQueue = logQueue
@@ -40,10 +46,6 @@ class Viewer(pyglet.window.Window):
 
         # Sprite containing the old image when scrolling in the new one
         self.oldSprite: Optional[Sprite] = None
-
-        # Control whether the FPS value is displayed
-        self.displayFps = False
-        self.fpsDisplay = FPSDisplay(self)
 
         # Set safe defaults
         self.xStartDrag = 0
@@ -78,12 +80,6 @@ class Viewer(pyglet.window.Window):
 
         # Create a batch drawing context
         self.batch = pyglet.graphics.Batch()
-
-        # Control whether the windows are allowed to be full screen
-        self.fullScreenAllowed = fullScreenAllowed
-
-        # Set window to full screen
-        self.set_fullscreen(self.fullScreenAllowed)
 
         # Create the initial Bezier curve
         self._CreateBezierCurve()
@@ -123,14 +119,14 @@ class Viewer(pyglet.window.Window):
 
     def _HideMouse(self, dt: float = 0.0) -> None:
         # Hide the mouse after the timeout expires
-        self.set_mouse_visible(False)
+        self.mainWindow.set_mouse_visible(False)
 
     def _ShowMouse(self, autoHide: bool) -> None:
         # Unschedule the mouse hide callback
         pyglet.clock.unschedule(self._HideMouse)
 
         # Set the mouse to be visible
-        self.set_mouse_visible(True)
+        self.mainWindow.set_mouse_visible(True)
 
         # If we want to hide the mouse again after a timeout, schedule the callback
         if autoHide:
@@ -480,14 +476,10 @@ class Viewer(pyglet.window.Window):
         # Check that image is not None
         if self.sprite:
             # Clear the existing screen
-            self.clear()
+            self.mainWindow.clear()
 
             # Draw the batch
             self.batch.draw()
-
-            # Draw the frames per second if enabled
-            if self.displayFps:
-                self.fpsDisplay.draw()
 
     def on_key_press(self, symbol, modifiers):
         if symbol == key.ESCAPE:
@@ -506,16 +498,10 @@ class Viewer(pyglet.window.Window):
                 return
         elif symbol == key.UP:
             # Open the file browser window with the current image parent path
-            if not self.fileBrowser:
-                self.fileBrowser = FileBrowser(self.images[self.currentImageIndex], self, self.SetupImagePathAndLoadImage, self.logQueue, self.fullScreenAllowed)
-            else:
-                self.fileBrowser.set_visible(True)
+            self.mainWindow.toggleViewer()
 
             # Ensure the mouse isn't hidden
             self._ShowMouse(False)
-
-            # Hide this window
-            self.set_visible(False)
 
             # Exit this handler
             return
@@ -581,10 +567,10 @@ class Viewer(pyglet.window.Window):
                 self.xStartDrag, self.yStartDrag = self._ConstrainToSprite(self.mouseX, self.mouseY)
 
                 # Get the crosshair cursor
-                cursor = self.get_system_mouse_cursor(self.CURSOR_CROSSHAIR)
+                cursor = self.mainWindow.get_system_mouse_cursor(self.mainWindow.CURSOR_CROSSHAIR)
 
                 # Set the crosshair as the current cursor
-                self.set_mouse_cursor(cursor)
+                self.mainWindow.set_mouse_cursor(cursor)
 
                 # Show the mouse without autohiding
                 self._ShowMouse(False)
@@ -612,7 +598,7 @@ class Viewer(pyglet.window.Window):
             self.leftCommandHeld = False
 
             # Calling set mouse cursor with no parameter resets it to the default
-            self.set_mouse_cursor()
+            self.mainWindow.set_mouse_cursor()
 
             # Show the mouse when it moves, autohiding afterwards
             self._ShowMouse(True)
@@ -689,10 +675,10 @@ class Viewer(pyglet.window.Window):
                 self.rectangle = None
 
             # Get the hand cursor
-            cursor = self.get_system_mouse_cursor(self.CURSOR_HAND)
+            cursor = self.mainWindow.get_system_mouse_cursor(self.mainWindow.CURSOR_HAND)
 
             # Set the hand as the current cursor
-            self.set_mouse_cursor(cursor)
+            self.mainWindow.set_mouse_cursor(cursor)
         elif button == mouse.RIGHT:
             # Quit the application
             self.logQueue.put_nowait(('Exiting Pyglet application', logging.DEBUG))
@@ -703,7 +689,7 @@ class Viewer(pyglet.window.Window):
         self._ShowMouse(True)
 
         # Calling set mouse cursor with no parameter resets it to the default
-        self.set_mouse_cursor()
+        self.mainWindow.set_mouse_cursor()
 
         # Clear the circle dragging flags
         self.draggingP1Circle = False
