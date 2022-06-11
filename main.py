@@ -1,8 +1,8 @@
-from ImageViewer.ImageViewer import ImageViewer
+from ImageViewer.MainWindow import MainWindow
 
 def main() -> None:
     # Start the image viewer
-    ImageViewer(fullScreenAllowed=True)
+    MainWindow(fullScreenAllowed=True)
 
 if __name__ == '__main__':
     main()
