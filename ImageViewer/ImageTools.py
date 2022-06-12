@@ -1,5 +1,5 @@
 from typing import Callable
-from PIL import Image, ImageFilter
+from PIL import Image, ImageFilter, ImageEnhance
 from PIL.ImageFilter import Filter
 
 from pyglet.image import ImageData
@@ -62,3 +62,16 @@ def FindEdges(inputImage: ImageData) -> ImageData:
 def Smooth(inputImage: ImageData) -> ImageData:
     # Smooth the image
     return _ManipulateImage(inputImage, ImageFilter.SMOOTH)
+
+def BlackAndWhite(inputImage: ImageData) -> ImageData:
+    # Convert the pyglet ImageData to a Pillow Image
+    pilImage = PygletToPillow(inputImage)
+
+    # Create the enhancement tool
+    enhance = ImageEnhance.Color(pilImage)
+
+    # Manipulate the image
+    manipulatedPilImage = enhance.enhance(0.0)
+
+    # Return the image as a Pyglet ImageData type
+    return PillowToPyglet(manipulatedPilImage)

@@ -14,7 +14,7 @@ from pyglet.sprite import Sprite
 from pyglet.image import ImageData, ImageDataRegion
 
 from ImageViewer.FileBrowser import FileBrowser
-from ImageViewer.ImageTools import Blur, Contour, Detail, EdgeEnhance, Emboss, FindEdges, Sharpen, Smooth
+from ImageViewer.ImageTools import BlackAndWhite, Blur, Contour, Detail, EdgeEnhance, Emboss, FindEdges, Sharpen, Smooth
 from ImageViewer.FileTypes import supportedExtensions
 
 class Direction(Enum):
@@ -517,6 +517,9 @@ class ImageViewer():
             elif symbol == key.O:
                 self._Smooth()
                 return
+            elif symbol == key.W:
+                self._BlackAndWhite()
+                return
             elif symbol == key.Z:
                 self._RestoreOriginalImage()
                 return
@@ -866,6 +869,14 @@ class ImageViewer():
         if self.image and self.sprite:
             # Create a Pyglet ImageData object from the bytes
             self.image = Smooth(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _BlackAndWhite(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = BlackAndWhite(self.image)
 
             # Set the sprite image to the new image
             self.sprite.image = self.image
