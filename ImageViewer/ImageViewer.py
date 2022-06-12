@@ -33,6 +33,12 @@ class ImageViewer():
         # The current image
         self.image: Optional[ImageData] = None
 
+        # The original image to go back to if it has been manipulated
+        self.originalImage: Optional[ImageData] = None
+        self.originalXPos: int = 0
+        self.originalYPos: int = 0
+        self.originalScale: float = 0.0
+
         # Sprite containing the image
         self.sprite: Optional[Sprite] = None
 
@@ -142,15 +148,18 @@ class ImageViewer():
         if imageRegion:
             self.image = imageRegion
             self.imageCanBeSaved = True
+            loadingImage = False
         else:
             # Load the new image
             self.image = pyglet.image.load(self.images[self.currentImageIndex])
+            self.originalImage = self.image
             self.imageCanBeSaved = False
+            loadingImage = True
 
         # Scale and position the image to fit the window
-        self._ScaleImage()
+        self._ScaleImage(loadingImage)
 
-    def _ScaleImage(self) -> None:
+    def _ScaleImage(self, loadingImage: bool) -> None:
         if self.image:
             # Work out how much to scale each axis to fit into the screen
             xScale = self.mainWindow.width / self.image.width
@@ -181,6 +190,16 @@ class ImageViewer():
 
             # Scale the sprite
             self.sprite.scale = scalingFactor
+
+            if loadingImage:
+                # Save the original position
+                self.originalXPos = xPos
+                self.originalYPos = yPos
+
+                # Save the original scale
+                self.originalScale = scalingFactor
+
+            print(scalingFactor)
 
             # Hide the mouse immediately
             self._HideMouse()
@@ -500,6 +519,9 @@ class ImageViewer():
             elif symbol == key.O:
                 self._Smooth()
                 return
+            elif symbol == key.Z:
+                self._RestoreOriginalImage()
+                return
             else:
                 return
         elif symbol == key.B:
@@ -786,11 +808,6 @@ class ImageViewer():
                 self.rectangle.delete()
                 self.rectangle = None
 
-    def on_resize(self, width, height):
-        # self.width = width
-        # self.height = height
-        self._ScaleImage()
-
     def _Sharpen(self) -> None:
         if self.image and self.sprite:
             # Create a Pyglet ImageData object from the bytes
@@ -854,3 +871,18 @@ class ImageViewer():
 
             # Set the sprite image to the new image
             self.sprite.image = self.image
+
+    def _RestoreOriginalImage(self) -> None:
+        if self.image and self.sprite:
+            # Restore the original image
+            self.image = self.originalImage
+
+            # Restore the sprite image
+            self.sprite.image = self.image
+
+            # Restore the sprite position
+            self.sprite.x = self.originalXPos
+            self.sprite.y = self.originalYPos
+
+            # Restore the original scaling
+            self.sprite.scale = self.originalScale

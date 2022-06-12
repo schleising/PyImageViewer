@@ -345,8 +345,3 @@ class FileBrowser():
 
             # Regenerate the thumbnails for the new folder
             self._GetThumbnails()
-
-    def on_resize(self, width, height):
-        # self.width = width
-        # self.height = height
-        pass
