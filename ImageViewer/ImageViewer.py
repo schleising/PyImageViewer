@@ -14,6 +14,7 @@ from pyglet.sprite import Sprite
 from pyglet.image import ImageData, ImageDataRegion
 
 from ImageViewer.FileBrowser import FileBrowser
+from ImageViewer.ImageTools import Sharpen
 from ImageViewer.FileTypes import supportedExtensions
 
 class Direction(Enum):
@@ -492,9 +493,9 @@ class ImageViewer():
 
             # Exit this handler
             return
-        # elif symbol == key.F:
-        #     self.displayFps = not self.displayFps
-        #     return
+        elif symbol == key.S:
+            self._Sharpen()
+            return
         elif self.direction is None:
             if symbol == key.RIGHT:
                 # Crop the image before setting the scroll direction
@@ -764,3 +765,11 @@ class ImageViewer():
         # self.width = width
         # self.height = height
         self._ScaleImage()
+
+    def _Sharpen(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = Sharpen(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image

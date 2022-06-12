@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from pyglet.image import ImageData
+from ImageViewer.ImageTools import PillowToPyglet
 
 class ThumbnailServer(threading.Thread):
     def __init__(self, logQueue: queue.Queue) -> None:
@@ -70,17 +70,8 @@ class ThumbnailServer(threading.Thread):
                 # Log that the image loaded as the thumbnail was created
                 self.log(f'{imagePath.name} Loaded and Thumbnail Created', logging.DEBUG)
 
-                # Get the mode (e.g., 'RGBA')
-                mode = fullImage.mode
-
-                # Get the number of bytes per pixel
-                formatLength = len(mode) if mode else 4
-
-                # Convert the image to bytes
-                rawImage = fullImage.tobytes()
-
                 # Create a Pyglet ImageData object from the bytes
-                image = ImageData(fullImage.width, fullImage.height, mode, rawImage, -fullImage.width * formatLength)
+                image = PillowToPyglet(fullImage)
 
         # Get a lock and, if the Process isn't shutting down, send the path and image back to the file browser
         with self.lock:
