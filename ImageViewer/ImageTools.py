@@ -63,7 +63,7 @@ def Smooth(inputImage: ImageData) -> ImageData:
     # Smooth the image
     return _ManipulateImage(inputImage, ImageFilter.SMOOTH)
 
-def BlackAndWhite(inputImage: ImageData) -> ImageData:
+def Colour(inputImage: ImageData, factor: float) -> ImageData:
     # Convert the pyglet ImageData to a Pillow Image
     pilImage = PygletToPillow(inputImage)
 
@@ -71,7 +71,33 @@ def BlackAndWhite(inputImage: ImageData) -> ImageData:
     enhance = ImageEnhance.Color(pilImage)
 
     # Manipulate the image
-    manipulatedPilImage = enhance.enhance(0.0)
+    manipulatedPilImage = enhance.enhance(factor)
+
+    # Return the image as a Pyglet ImageData type
+    return PillowToPyglet(manipulatedPilImage)
+
+def Contrast(inputImage: ImageData, factor: float) -> ImageData:
+    # Convert the pyglet ImageData to a Pillow Image
+    pilImage = PygletToPillow(inputImage)
+
+    # Create the enhancement tool
+    enhance = ImageEnhance.Contrast(pilImage)
+
+    # Manipulate the image
+    manipulatedPilImage = enhance.enhance(factor)
+
+    # Return the image as a Pyglet ImageData type
+    return PillowToPyglet(manipulatedPilImage)
+
+def Brightness(inputImage: ImageData, factor: float) -> ImageData:
+    # Convert the pyglet ImageData to a Pillow Image
+    pilImage = PygletToPillow(inputImage)
+
+    # Create the enhancement tool
+    enhance = ImageEnhance.Brightness(pilImage)
+
+    # Manipulate the image
+    manipulatedPilImage = enhance.enhance(factor)
 
     # Return the image as a Pyglet ImageData type
     return PillowToPyglet(manipulatedPilImage)

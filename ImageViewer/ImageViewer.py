@@ -14,7 +14,7 @@ from pyglet.sprite import Sprite
 from pyglet.image import ImageData, ImageDataRegion
 
 from ImageViewer.FileBrowser import FileBrowser
-from ImageViewer.ImageTools import BlackAndWhite, Blur, Contour, Detail, EdgeEnhance, Emboss, FindEdges, Sharpen, Smooth
+from ImageViewer.ImageTools import Brightness, Colour, Blur, Contour, Contrast, Detail, EdgeEnhance, Emboss, FindEdges, Sharpen, Smooth
 from ImageViewer.FileTypes import supportedExtensions
 
 class Direction(Enum):
@@ -520,8 +520,32 @@ class ImageViewer():
             elif symbol == key.W:
                 self._BlackAndWhite()
                 return
+            elif symbol == key.RIGHT:
+                self._Colour(1.1)
+                return
+            elif symbol == key.LEFT:
+                self._Colour(0.9)
+                return
             elif symbol == key.Z:
                 self._RestoreOriginalImage()
+                return
+            else:
+                return
+        elif modifiers & key.MOD_OPTION:
+            if symbol == key.RIGHT:
+                self._Contrast(1.1)
+                return
+            elif symbol == key.LEFT:
+                self._Contrast(0.9)
+                return
+            else:
+                return
+        elif modifiers & key.MOD_SHIFT:
+            if symbol == key.RIGHT:
+                self._Brightness(1.1)
+                return
+            elif symbol == key.LEFT:
+                self._Brightness(0.9)
                 return
             else:
                 return
@@ -876,7 +900,31 @@ class ImageViewer():
     def _BlackAndWhite(self) -> None:
         if self.image and self.sprite:
             # Create a Pyglet ImageData object from the bytes
-            self.image = BlackAndWhite(self.image)
+            self.image = Colour(self.image, 0.0)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _Colour(self, factor: float) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = Colour(self.image, factor)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _Contrast(self, factor: float) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = Contrast(self.image, factor)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _Brightness(self, factor: float) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = Brightness(self.image, factor)
 
             # Set the sprite image to the new image
             self.sprite.image = self.image
