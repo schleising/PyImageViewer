@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pyglet
 
-from ImageViewer.Viewer import Viewer
+from ImageViewer.ImageViewer import ImageViewer
 from ImageViewer.FileBrowser import FileBrowser
 from ImageViewer.FileTypes import supportedExtensions
 from ImageViewer.Logger import Logger
@@ -65,7 +65,7 @@ class MainWindow(pyglet.window.Window):
         self.maximize()
 
         # Create a viewer
-        self.viewer = Viewer(self, logQueue)
+        self.viewer = ImageViewer(self, logQueue)
 
         # Create a file browser
         self.fileBrowser = FileBrowser(imagePath, self, self.viewer.SetupImagePathAndLoadImage, logQueue)

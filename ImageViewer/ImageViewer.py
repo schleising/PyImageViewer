@@ -21,7 +21,7 @@ class Direction(Enum):
     Forward = auto()
     Back = auto()
 
-class Viewer():
+class ImageViewer():
     def __init__(self, mainWindow: Window, logQueue: queue.Queue) -> None:
 
         # Set the main window
