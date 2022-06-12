@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 
 import pyglet
+from pyglet.window import key
 
 from ImageViewer.ImageViewer import ImageViewer
 from ImageViewer.FileBrowser import FileBrowser
@@ -32,10 +33,10 @@ class MainWindow(pyglet.window.Window):
         logger = Logger(logLevel)
 
         # Get the logger queue
-        logQueue = logger.messageQueue
+        self.logQueue = logger.messageQueue
 
         # Log that the application has started
-        logQueue.put_nowait(('Application Started', logging.INFO))
+        self.logQueue.put_nowait(('Application Started', logging.INFO))
 
         if len(sys.argv) > 1:
             # If there is an image on the command line, get it
@@ -65,10 +66,10 @@ class MainWindow(pyglet.window.Window):
         self.maximize()
 
         # Create a viewer
-        self.viewer = ImageViewer(self, logQueue)
+        self.viewer = ImageViewer(self, self.logQueue)
 
         # Create a file browser
-        self.fileBrowser = FileBrowser(imagePath, self, self.viewer.SetupImagePathAndLoadImage, logQueue)
+        self.fileBrowser = FileBrowser(imagePath, self, self.viewer.SetupImagePathAndLoadImage, self.logQueue)
 
         # Let the viewer have access to the file browser
         self.viewer.fileBrowser = self.fileBrowser
@@ -78,7 +79,7 @@ class MainWindow(pyglet.window.Window):
             self.viewer.SetupImagePathAndLoadImage(imagePath)
 
         # Log that the main loop is starting
-        logQueue.put_nowait(('Starting Pyglet mainloop', logging.DEBUG))
+        self.logQueue.put_nowait(('Starting Pyglet mainloop', logging.DEBUG))
 
         # Run the app
         pyglet.app.run()
@@ -87,7 +88,7 @@ class MainWindow(pyglet.window.Window):
         self.fileBrowser.thumbnailServer.toTS.put_nowait((None, None))
 
         # Log that the application is closing
-        logQueue.put_nowait(('Exiting', logging.INFO))
+        self.logQueue.put_nowait(('Exiting', logging.INFO))
 
     def toggleViewer(self) -> None:
         if self.viewerMode == ViewerMode.FileBrowserMode:
@@ -102,7 +103,11 @@ class MainWindow(pyglet.window.Window):
             self.fileBrowser.on_draw()
 
     def on_key_press(self, symbol, modifiers):
-        if self.viewerMode == ViewerMode.ImageViewerMode:
+        if symbol == key.ESCAPE:
+            # Quit the application
+            self.logQueue.put_nowait(('ESC Pressed, Exiting Pyglet application', logging.DEBUG))
+            pyglet.app.exit()
+        elif self.viewerMode == ViewerMode.ImageViewerMode:
             self.viewer.on_key_press(symbol, modifiers)
         else:
             self.fileBrowser.on_key_press(symbol, modifiers)

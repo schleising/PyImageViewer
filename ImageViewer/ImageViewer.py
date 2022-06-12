@@ -479,12 +479,8 @@ class ImageViewer():
             self.batch.draw()
 
     def on_key_press(self, symbol, modifiers):
-        if symbol == key.ESCAPE:
-            # Quit the application
-            self.logQueue.put_nowait(('Exiting Pyglet application', logging.DEBUG))
-            pyglet.app.exit()
         # Ignore the request if the previous scroll is still ongoing
-        elif symbol == key.B:
+        if symbol == key.B:
             if self.bezierCurve:
                 # If the Bezier curve is shown, delete it
                 self._HideBezierCurve()

@@ -166,14 +166,7 @@ class FileBrowser():
             pyglet.clock.schedule_once(self.ReceiveImages, 1 / 60)
 
     def on_key_press(self, symbol, modifiers):
-        if symbol == key.ESCAPE:
-            # Log that the browser window is closing
-            self.logQueue.put_nowait(('Closing File Browser', logging.DEBUG))
-
-            # Exit the application
-            pyglet.app.exit()
-
-        elif symbol == key.UP:
+        if symbol == key.UP:
             if modifiers & key.MOD_SHIFT:
                 # Update the path with the parent folder path
                 self.inputPath = self.inputPath.parent
