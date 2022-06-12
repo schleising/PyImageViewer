@@ -193,13 +193,11 @@ class ImageViewer():
 
             if loadingImage:
                 # Save the original position
-                self.originalXPos = xPos
+                self.originalXPos = self.targetXPos
                 self.originalYPos = yPos
 
                 # Save the original scale
                 self.originalScale = scalingFactor
-
-            print(scalingFactor)
 
             # Hide the mouse immediately
             self._HideMouse()
