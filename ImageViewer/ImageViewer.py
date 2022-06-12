@@ -14,7 +14,7 @@ from pyglet.sprite import Sprite
 from pyglet.image import ImageData, ImageDataRegion
 
 from ImageViewer.FileBrowser import FileBrowser
-from ImageViewer.ImageTools import Blur, Sharpen
+from ImageViewer.ImageTools import Blur, Contour, Detail, EdgeEnhance, Emboss, FindEdges, Sharpen, Smooth
 from ImageViewer.FileTypes import supportedExtensions
 
 class Direction(Enum):
@@ -482,6 +482,24 @@ class ImageViewer():
             elif symbol == key.B:
                 self._Blur()
                 return
+            elif symbol == key.C:
+                self._Contour()
+                return
+            elif symbol == key.D:
+                self._Detail()
+                return
+            elif symbol == key.E:
+                self._EdgeEnhance()
+                return
+            elif symbol == key.M:
+                self._Emboss()
+                return
+            elif symbol == key.F:
+                self._FindEdges()
+                return
+            elif symbol == key.O:
+                self._Smooth()
+                return
             else:
                 return
         elif symbol == key.B:
@@ -785,6 +803,54 @@ class ImageViewer():
         if self.image and self.sprite:
             # Create a Pyglet ImageData object from the bytes
             self.image = Blur(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _Contour(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = Contour(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _Detail(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = Detail(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _EdgeEnhance(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = EdgeEnhance(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _Emboss(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = Emboss(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _FindEdges(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = FindEdges(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _Smooth(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = Smooth(self.image)
 
             # Set the sprite image to the new image
             self.sprite.image = self.image

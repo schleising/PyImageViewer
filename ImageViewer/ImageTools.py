@@ -38,3 +38,27 @@ def Sharpen(inputImage: ImageData) -> ImageData:
 def Blur(inputImage: ImageData) -> ImageData:
     # Blur the image
     return _ManipulateImage(inputImage, ImageFilter.BLUR)
+
+def Contour(inputImage: ImageData) -> ImageData:
+    # Contour the image
+    return _ManipulateImage(inputImage, ImageFilter.CONTOUR)
+
+def Detail(inputImage: ImageData) -> ImageData:
+    # Detail the image
+    return _ManipulateImage(inputImage, ImageFilter.DETAIL)
+
+def EdgeEnhance(inputImage: ImageData) -> ImageData:
+    # Edge enhance the image
+    return _ManipulateImage(inputImage, ImageFilter.EDGE_ENHANCE)
+
+def Emboss(inputImage: ImageData) -> ImageData:
+    # Emboss the image
+    return _ManipulateImage(inputImage, ImageFilter.EMBOSS)
+
+def FindEdges(inputImage: ImageData) -> ImageData:
+    # Find Edges the image
+    return _ManipulateImage(inputImage, ImageFilter.FIND_EDGES)
+
+def Smooth(inputImage: ImageData) -> ImageData:
+    # Smooth the image
+    return _ManipulateImage(inputImage, ImageFilter.SMOOTH)
