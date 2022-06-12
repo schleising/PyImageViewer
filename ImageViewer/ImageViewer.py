@@ -50,7 +50,7 @@ class ImageViewer():
         self.yStartDrag = 0
         self.rectangle: Optional[pyglet.shapes.Rectangle] = None
         self.imageCanBeSaved: bool = False
-        self.leftCommandHeld = False
+        self.leftControlHeld = False
         self.mouseX = 0
         self.mouseY = 0
         self.fps = 60
@@ -621,7 +621,7 @@ class ImageViewer():
                     self.rectangle = None
 
                 # Log that the left command key is held down
-                self.leftCommandHeld = True
+                self.leftControlHeld = True
 
                 # Log the starting point of the rectangle
                 self.xStartDrag, self.yStartDrag = self._ConstrainToSprite(self.mouseX, self.mouseY)
@@ -655,7 +655,7 @@ class ImageViewer():
     def on_key_release(self, symbol, modifiers):
         if symbol == key.LCTRL:
             # Clear the left command key held status
-            self.leftCommandHeld = False
+            self.leftControlHeld = False
 
             # Calling set mouse cursor with no parameter resets it to the default
             self.mainWindow.set_mouse_cursor()
@@ -668,7 +668,7 @@ class ImageViewer():
         self.mouseX = x
         self.mouseY = y
 
-        if self.leftCommandHeld:
+        if self.leftControlHeld:
             # Get the x and y position constrained to the image
             xPos, yPos = self._ConstrainToSprite(x, y)
 
@@ -727,7 +727,7 @@ class ImageViewer():
             self._ShowMouse(False)
 
             # Clear the left command key held status
-            self.leftCommandHeld = False
+            self.leftControlHeld = False
 
             # Clear the rectangle
             if self.rectangle:
