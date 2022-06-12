@@ -275,9 +275,6 @@ class FileBrowser():
             self.ScrollBrowser(scrollAmount)
 
     def on_draw(self):
-        # Clear the display
-        self.mainWindow.clear()
-
         # Draw the sprites
         self.batch.draw()
 

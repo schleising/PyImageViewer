@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 
 import pyglet
-from pyglet.window import key
+from pyglet.window import key, FPSDisplay
 
 from ImageViewer.ImageViewer import ImageViewer
 from ImageViewer.FileBrowser import FileBrowser
@@ -37,6 +37,10 @@ class MainWindow(pyglet.window.Window):
 
         # Log that the application has started
         self.logQueue.put_nowait(('Application Started', logging.INFO))
+
+        # Control whether the FPS value is displayed
+        self.displayFps = False
+        self.fpsDisplay = FPSDisplay(self)
 
         if len(sys.argv) > 1:
             # If there is an image on the command line, get it
@@ -97,16 +101,28 @@ class MainWindow(pyglet.window.Window):
             self.viewerMode = ViewerMode.FileBrowserMode
 
     def on_draw(self):
+        # Clear the window
+        self.clear()
+
         if self.viewerMode == ViewerMode.ImageViewerMode:
+            # If in viewer mode draw the single image
             self.viewer.on_draw()
         else:
+            # If in file browser move, draw the thumbnail containers
             self.fileBrowser.on_draw()
+
+        # Draw the frames per second if enabled
+        if self.displayFps:
+            self.fpsDisplay.draw()
 
     def on_key_press(self, symbol, modifiers):
         if symbol == key.ESCAPE:
             # Quit the application
             self.logQueue.put_nowait(('ESC Pressed, Exiting Pyglet application', logging.DEBUG))
             pyglet.app.exit()
+        elif symbol == key.F:
+            self.displayFps = not self.displayFps
+            return
         elif self.viewerMode == ViewerMode.ImageViewerMode:
             self.viewer.on_key_press(symbol, modifiers)
         else:

@@ -471,9 +471,6 @@ class ImageViewer():
     def on_draw(self):
         # Check that image is not None
         if self.sprite:
-            # Clear the existing screen
-            self.mainWindow.clear()
-
             # Draw the batch
             self.batch.draw()
 
