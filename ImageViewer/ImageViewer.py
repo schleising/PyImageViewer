@@ -14,7 +14,7 @@ from pyglet.sprite import Sprite
 from pyglet.image import ImageData, ImageDataRegion
 
 from ImageViewer.FileBrowser import FileBrowser
-from ImageViewer.ImageTools import Sharpen
+from ImageViewer.ImageTools import Blur, Sharpen
 from ImageViewer.FileTypes import supportedExtensions
 
 class Direction(Enum):
@@ -479,6 +479,11 @@ class ImageViewer():
             if symbol == key.S:
                 self._Sharpen()
                 return
+            elif symbol == key.B:
+                self._Blur()
+                return
+            else:
+                return
         elif symbol == key.B:
             if self.bezierCurve:
                 # If the Bezier curve is shown, delete it
@@ -772,6 +777,14 @@ class ImageViewer():
         if self.image and self.sprite:
             # Create a Pyglet ImageData object from the bytes
             self.image = Sharpen(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _Blur(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = Blur(self.image)
 
             # Set the sprite image to the new image
             self.sprite.image = self.image

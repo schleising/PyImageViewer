@@ -28,3 +28,13 @@ def Sharpen(inputImage: ImageData) -> ImageData:
 
     # Return the image as a Pyglet ImageData type
     return PillowToPyglet(sharpenedPilImage)
+
+def Blur(inputImage: ImageData) -> ImageData:
+    # Convert the pyglet ImageData to a Pillow Image
+    pilImage = PygletToPillow(inputImage)
+
+    # Sharpen the image
+    blurredPilImage = pilImage.filter(ImageFilter.BLUR)
+
+    # Return the image as a Pyglet ImageData type
+    return PillowToPyglet(blurredPilImage)
