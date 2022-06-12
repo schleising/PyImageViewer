@@ -14,6 +14,7 @@ from pyglet.sprite import Sprite
 from pyglet.image import ImageData, ImageDataRegion
 
 from ImageViewer.FileBrowser import FileBrowser
+from ImageViewer.ImageTools import BlackAndWhite, Blur, Contour, Detail, EdgeEnhance, Emboss, FindEdges, Sharpen, Smooth
 from ImageViewer.FileTypes import supportedExtensions
 
 class Direction(Enum):
@@ -31,6 +32,12 @@ class ImageViewer():
 
         # The current image
         self.image: Optional[ImageData] = None
+
+        # The original image to go back to if it has been manipulated
+        self.originalImage: Optional[ImageData] = None
+        self.originalXPos: int = 0
+        self.originalYPos: int = 0
+        self.originalScale: float = 0.0
 
         # Sprite containing the image
         self.sprite: Optional[Sprite] = None
@@ -141,15 +148,18 @@ class ImageViewer():
         if imageRegion:
             self.image = imageRegion
             self.imageCanBeSaved = True
+            loadingImage = False
         else:
             # Load the new image
             self.image = pyglet.image.load(self.images[self.currentImageIndex])
+            self.originalImage = self.image
             self.imageCanBeSaved = False
+            loadingImage = True
 
         # Scale and position the image to fit the window
-        self._ScaleImage()
+        self._ScaleImage(loadingImage)
 
-    def _ScaleImage(self) -> None:
+    def _ScaleImage(self, loadingImage: bool) -> None:
         if self.image:
             # Work out how much to scale each axis to fit into the screen
             xScale = self.mainWindow.width / self.image.width
@@ -180,6 +190,14 @@ class ImageViewer():
 
             # Scale the sprite
             self.sprite.scale = scalingFactor
+
+            if loadingImage:
+                # Save the original position
+                self.originalXPos = self.targetXPos
+                self.originalYPos = yPos
+
+                # Save the original scale
+                self.originalScale = scalingFactor
 
             # Hide the mouse immediately
             self._HideMouse()
@@ -473,8 +491,41 @@ class ImageViewer():
         self.batch.draw()
 
     def on_key_press(self, symbol, modifiers):
-        # Ignore the request if the previous scroll is still ongoing
-        if symbol == key.B:
+        if modifiers & key.MOD_COMMAND:
+            # If the Command button is pressed this is an image manipulation command
+            if symbol == key.S:
+                self._Sharpen()
+                return
+            elif symbol == key.B:
+                self._Blur()
+                return
+            elif symbol == key.C:
+                self._Contour()
+                return
+            elif symbol == key.D:
+                self._Detail()
+                return
+            elif symbol == key.E:
+                self._EdgeEnhance()
+                return
+            elif symbol == key.M:
+                self._Emboss()
+                return
+            elif symbol == key.F:
+                self._FindEdges()
+                return
+            elif symbol == key.O:
+                self._Smooth()
+                return
+            elif symbol == key.W:
+                self._BlackAndWhite()
+                return
+            elif symbol == key.Z:
+                self._RestoreOriginalImage()
+                return
+            else:
+                return
+        elif symbol == key.B:
             if self.bezierCurve:
                 # If the Bezier curve is shown, delete it
                 self._HideBezierCurve()
@@ -492,9 +543,7 @@ class ImageViewer():
 
             # Exit this handler
             return
-        # elif symbol == key.F:
-        #     self.displayFps = not self.displayFps
-        #     return
+        # Ignore the request if the previous scroll is still ongoing
         elif self.direction is None:
             if symbol == key.RIGHT:
                 # Crop the image before setting the scroll direction
@@ -541,7 +590,7 @@ class ImageViewer():
 
                 # Return without reloading the image
                 return
-            elif symbol == key.LCOMMAND:
+            elif symbol == key.LCTRL:
                 # Clear the rectangle
                 if self.rectangle:
                     self.rectangle.delete()
@@ -580,7 +629,7 @@ class ImageViewer():
         self._LoadImage()
 
     def on_key_release(self, symbol, modifiers):
-        if symbol == key.LCOMMAND:
+        if symbol == key.LCTRL:
             # Clear the left command key held status
             self.leftCommandHeld = False
 
@@ -760,7 +809,89 @@ class ImageViewer():
                 self.rectangle.delete()
                 self.rectangle = None
 
-    def on_resize(self, width, height):
-        # self.width = width
-        # self.height = height
-        self._ScaleImage()
+    def _Sharpen(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = Sharpen(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _Blur(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = Blur(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _Contour(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = Contour(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _Detail(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = Detail(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _EdgeEnhance(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = EdgeEnhance(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _Emboss(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = Emboss(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _FindEdges(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = FindEdges(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _Smooth(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = Smooth(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _BlackAndWhite(self) -> None:
+        if self.image and self.sprite:
+            # Create a Pyglet ImageData object from the bytes
+            self.image = BlackAndWhite(self.image)
+
+            # Set the sprite image to the new image
+            self.sprite.image = self.image
+
+    def _RestoreOriginalImage(self) -> None:
+        if self.image and self.sprite:
+            # Restore the original image
+            self.image = self.originalImage
+
+            # Restore the sprite image
+            self.sprite.image = self.image
+
+            # Restore the sprite position
+            self.sprite.x = self.originalXPos
+            self.sprite.y = self.originalYPos
+
+            # Restore the original scaling
+            self.sprite.scale = self.originalScale

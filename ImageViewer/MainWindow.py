@@ -120,7 +120,7 @@ class MainWindow(pyglet.window.Window):
             # Quit the application
             self.logQueue.put_nowait(('ESC Pressed, Exiting Pyglet application', logging.DEBUG))
             pyglet.app.exit()
-        elif symbol == key.F:
+        elif symbol == key.F and not modifiers & key.MOD_COMMAND:
             self.displayFps = not self.displayFps
             return
         elif self.viewerMode == ViewerMode.ImageViewerMode:
@@ -155,10 +155,3 @@ class MainWindow(pyglet.window.Window):
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         if self.viewerMode == ViewerMode.ImageViewerMode:
             self.viewer.on_mouse_drag(x, y, dx, dy, buttons, modifiers)
-
-    def on_resize(self, width, height):
-        if self.viewerMode == ViewerMode.ImageViewerMode:
-            self.viewer.on_resize(width, height)
-        else:
-            self.fileBrowser.on_resize(width, height)
-        return super().on_resize(width, height)
