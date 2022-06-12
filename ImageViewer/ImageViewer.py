@@ -12,10 +12,9 @@ import pyglet
 from pyglet.window import key, mouse, Window
 from pyglet.sprite import Sprite
 from pyglet.image import ImageData, ImageDataRegion
-from ImageViewer.FileBrowser import FileBrowser
 
+from ImageViewer.FileBrowser import FileBrowser
 from ImageViewer.FileTypes import supportedExtensions
-# from ImageViewer.ImageViewer import ImageViewer
 
 class Direction(Enum):
     Forward = auto()

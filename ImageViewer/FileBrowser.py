@@ -12,7 +12,6 @@ from pyglet.image import ImageData
 from ImageViewer.FileTypes import supportedExtensions
 from ImageViewer.ThumbnailServer import ThumbnailServer
 from ImageViewer.Container import Container
-# from ImageViewer.ImageViewer import ImageViewer
 
 class FileBrowser():
     def __init__(self, inputPath: Path, mainWindow: Window, loadFunction: Callable[[Path], None], logQueue: queue.Queue) -> None:
