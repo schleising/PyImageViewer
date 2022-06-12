@@ -15,12 +15,21 @@ class ViewerMode(Enum):
     ImageViewerMode = auto()
 
 class MainWindow(pyglet.window.Window):
-    def __init__(self, fullScreenAllowed: bool) -> None:
+    def __init__(self, debugMode: bool) -> None:
         # Call base class init
         super(MainWindow, self).__init__(resizable=True, width=1280, height=720, style=pyglet.window.Window.WINDOW_STYLE_BORDERLESS)
 
+        # Add an event logger
+        if debugMode:
+            from pyglet.window import event
+            event_logger = event.WindowEventLogger()
+            self.push_handlers(event_logger)
+            logLevel = logging.DEBUG
+        else:
+            logLevel = logging.INFO
+
         # Create a logger instance
-        logger = Logger()
+        logger = Logger(logLevel)
 
         # Get the logger queue
         logQueue = logger.messageQueue
@@ -52,9 +61,8 @@ class MainWindow(pyglet.window.Window):
             # If it's a folder start in the browser in this folder
             self.viewerMode = ViewerMode.FileBrowserMode
 
-        # # Set window to full screen
-        if fullScreenAllowed:
-            self.maximize()
+        # Set window to full screen
+        self.maximize()
 
         # Create a viewer
         self.viewer = Viewer(self, logQueue)

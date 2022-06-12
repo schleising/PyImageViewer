@@ -24,10 +24,6 @@ class Direction(Enum):
 class Viewer():
     def __init__(self, mainWindow: Window, logQueue: queue.Queue) -> None:
 
-        # Add an event logger
-        # event_logger = event.WindowEventLogger()
-        # self.push_handlers(event_logger)
-
         # Set the main window
         self.mainWindow = mainWindow
 

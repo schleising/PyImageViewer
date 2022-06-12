@@ -2,7 +2,7 @@ from ImageViewer.MainWindow import MainWindow
 
 def main() -> None:
     # Start the image viewer
-    MainWindow(fullScreenAllowed=True)
+    MainWindow(debugMode=True)
 
 if __name__ == '__main__':
     main()
