@@ -1,4 +1,6 @@
+from typing import Callable
 from PIL import Image, ImageFilter
+from PIL.ImageFilter import Filter
 
 from pyglet.image import ImageData
 
@@ -19,22 +21,20 @@ def PillowToPyglet(inputImage: Image.Image) -> ImageData:
     # Create a Pyglet ImageData object from the bytes and return it
     return ImageData(inputImage.width, inputImage.height, mode, rawImage, -inputImage.width * formatLength)
 
-def Sharpen(inputImage: ImageData) -> ImageData:
+def _ManipulateImage(inputImage: ImageData, filter: Filter | Callable[[],Filter]) -> ImageData:
     # Convert the pyglet ImageData to a Pillow Image
     pilImage = PygletToPillow(inputImage)
 
-    # Sharpen the image
-    sharpenedPilImage = pilImage.filter(ImageFilter.SHARPEN)
+    # Manipulate the image
+    manipulatedPilImage = pilImage.filter(filter)
 
     # Return the image as a Pyglet ImageData type
-    return PillowToPyglet(sharpenedPilImage)
+    return PillowToPyglet(manipulatedPilImage)
+
+def Sharpen(inputImage: ImageData) -> ImageData:
+    # Sharpen the image
+    return _ManipulateImage(inputImage, ImageFilter.SHARPEN)
 
 def Blur(inputImage: ImageData) -> ImageData:
-    # Convert the pyglet ImageData to a Pillow Image
-    pilImage = PygletToPillow(inputImage)
-
-    # Sharpen the image
-    blurredPilImage = pilImage.filter(ImageFilter.BLUR)
-
-    # Return the image as a Pyglet ImageData type
-    return PillowToPyglet(blurredPilImage)
+    # Blur the image
+    return _ManipulateImage(inputImage, ImageFilter.BLUR)
