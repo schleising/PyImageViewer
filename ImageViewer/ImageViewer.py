@@ -378,7 +378,7 @@ class ImageViewer():
             originalFilename = self.images[self.currentImageIndex]
 
             # Construct a new filename using .png as the suffix
-            newFilename = originalFilename.parent / f'{originalFilename.stem}_Cropped {datetime.now()}.png'
+            newFilename = originalFilename.parent / f'{originalFilename.stem}_Modified {datetime.now()}.png'
 
             # Save the new file
             self.image.save(newFilename)
@@ -841,6 +841,9 @@ class ImageViewer():
             # Set the sprite image to the new image
             self.sprite.image = self.image
 
+            # Flag that this image can now be saved
+            self.imageCanBeSaved = True
+
     def _Blur(self) -> None:
         if self.image and self.sprite:
             # Create a Pyglet ImageData object from the bytes
@@ -848,6 +851,9 @@ class ImageViewer():
 
             # Set the sprite image to the new image
             self.sprite.image = self.image
+
+            # Flag that this image can now be saved
+            self.imageCanBeSaved = True
 
     def _Contour(self) -> None:
         if self.image and self.sprite:
@@ -857,6 +863,9 @@ class ImageViewer():
             # Set the sprite image to the new image
             self.sprite.image = self.image
 
+            # Flag that this image can now be saved
+            self.imageCanBeSaved = True
+
     def _Detail(self) -> None:
         if self.image and self.sprite:
             # Create a Pyglet ImageData object from the bytes
@@ -864,6 +873,9 @@ class ImageViewer():
 
             # Set the sprite image to the new image
             self.sprite.image = self.image
+
+            # Flag that this image can now be saved
+            self.imageCanBeSaved = True
 
     def _EdgeEnhance(self) -> None:
         if self.image and self.sprite:
@@ -873,6 +885,9 @@ class ImageViewer():
             # Set the sprite image to the new image
             self.sprite.image = self.image
 
+            # Flag that this image can now be saved
+            self.imageCanBeSaved = True
+
     def _Emboss(self) -> None:
         if self.image and self.sprite:
             # Create a Pyglet ImageData object from the bytes
@@ -880,6 +895,9 @@ class ImageViewer():
 
             # Set the sprite image to the new image
             self.sprite.image = self.image
+
+            # Flag that this image can now be saved
+            self.imageCanBeSaved = True
 
     def _FindEdges(self) -> None:
         if self.image and self.sprite:
@@ -889,6 +907,9 @@ class ImageViewer():
             # Set the sprite image to the new image
             self.sprite.image = self.image
 
+            # Flag that this image can now be saved
+            self.imageCanBeSaved = True
+
     def _Smooth(self) -> None:
         if self.image and self.sprite:
             # Create a Pyglet ImageData object from the bytes
@@ -896,6 +917,9 @@ class ImageViewer():
 
             # Set the sprite image to the new image
             self.sprite.image = self.image
+
+            # Flag that this image can now be saved
+            self.imageCanBeSaved = True
 
     def _BlackAndWhite(self) -> None:
         if self.image and self.sprite:
@@ -905,6 +929,9 @@ class ImageViewer():
             # Set the sprite image to the new image
             self.sprite.image = self.image
 
+            # Flag that this image can now be saved
+            self.imageCanBeSaved = True
+
     def _Colour(self, factor: float) -> None:
         if self.image and self.sprite:
             # Create a Pyglet ImageData object from the bytes
@@ -912,6 +939,9 @@ class ImageViewer():
 
             # Set the sprite image to the new image
             self.sprite.image = self.image
+
+            # Flag that this image can now be saved
+            self.imageCanBeSaved = True
 
     def _Contrast(self, factor: float) -> None:
         if self.image and self.sprite:
@@ -921,6 +951,9 @@ class ImageViewer():
             # Set the sprite image to the new image
             self.sprite.image = self.image
 
+            # Flag that this image can now be saved
+            self.imageCanBeSaved = True
+
     def _Brightness(self, factor: float) -> None:
         if self.image and self.sprite:
             # Create a Pyglet ImageData object from the bytes
@@ -928,6 +961,9 @@ class ImageViewer():
 
             # Set the sprite image to the new image
             self.sprite.image = self.image
+
+            # Flag that this image can now be saved
+            self.imageCanBeSaved = True
 
     def _RestoreOriginalImage(self) -> None:
         if self.image and self.sprite:
@@ -943,3 +979,6 @@ class ImageViewer():
 
             # Restore the original scaling
             self.sprite.scale = self.originalScale
+
+            # Flag that this image can no longer be saved
+            self.imageCanBeSaved = False
