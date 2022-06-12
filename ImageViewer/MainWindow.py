@@ -120,7 +120,7 @@ class MainWindow(pyglet.window.Window):
             # Quit the application
             self.logQueue.put_nowait(('ESC Pressed, Exiting Pyglet application', logging.DEBUG))
             pyglet.app.exit()
-        elif symbol == key.F:
+        elif symbol == key.F and not modifiers & key.MOD_COMMAND:
             self.displayFps = not self.displayFps
             return
         elif self.viewerMode == ViewerMode.ImageViewerMode:
