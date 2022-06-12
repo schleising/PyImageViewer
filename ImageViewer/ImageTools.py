@@ -21,7 +21,7 @@ def PillowToPyglet(inputImage: Image.Image) -> ImageData:
     # Create a Pyglet ImageData object from the bytes and return it
     return ImageData(inputImage.width, inputImage.height, mode, rawImage, -inputImage.width * formatLength)
 
-def _ManipulateImage(inputImage: ImageData, filter: Filter | Callable[[],Filter]) -> ImageData:
+def _ManipulateImage(inputImage: ImageData, filter: Filter | Callable[[], Filter]) -> ImageData:
     # Convert the pyglet ImageData to a Pillow Image
     pilImage = PygletToPillow(inputImage)
 
