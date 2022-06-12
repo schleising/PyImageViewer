@@ -469,10 +469,8 @@ class ImageViewer():
             self.p2Circle = None
 
     def on_draw(self):
-        # Check that image is not None
-        if self.sprite:
-            # Draw the batch
-            self.batch.draw()
+        # Draw the batch
+        self.batch.draw()
 
     def on_key_press(self, symbol, modifiers):
         # Ignore the request if the previous scroll is still ongoing
