@@ -63,6 +63,10 @@ def Smooth(inputImage: ImageData) -> ImageData:
     # Smooth the image
     return _ManipulateImage(inputImage, ImageFilter.SMOOTH)
 
+def UnsharpMask(inputImage: ImageData) -> ImageData:
+    # Sharpen the image using an unsharp mask
+    return _ManipulateImage(inputImage, ImageFilter.UnsharpMask)
+
 def Colour(inputImage: ImageData, factor: float) -> ImageData:
     # Convert the pyglet ImageData to a Pillow Image
     pilImage = PygletToPillow(inputImage)
