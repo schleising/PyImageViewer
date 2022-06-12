@@ -474,8 +474,12 @@ class ImageViewer():
         self.batch.draw()
 
     def on_key_press(self, symbol, modifiers):
-        # Ignore the request if the previous scroll is still ongoing
-        if symbol == key.B:
+        if modifiers & key.MOD_COMMAND:
+            # If the Command button is pressed this is an image manipulation command
+            if symbol == key.S:
+                self._Sharpen()
+                return
+        elif symbol == key.B:
             if self.bezierCurve:
                 # If the Bezier curve is shown, delete it
                 self._HideBezierCurve()
@@ -493,9 +497,7 @@ class ImageViewer():
 
             # Exit this handler
             return
-        elif symbol == key.S:
-            self._Sharpen()
-            return
+        # Ignore the request if the previous scroll is still ongoing
         elif self.direction is None:
             if symbol == key.RIGHT:
                 # Crop the image before setting the scroll direction
@@ -542,7 +544,7 @@ class ImageViewer():
 
                 # Return without reloading the image
                 return
-            elif symbol == key.LCOMMAND:
+            elif symbol == key.LCTRL:
                 # Clear the rectangle
                 if self.rectangle:
                     self.rectangle.delete()
@@ -581,7 +583,7 @@ class ImageViewer():
         self._LoadImage()
 
     def on_key_release(self, symbol, modifiers):
-        if symbol == key.LCOMMAND:
+        if symbol == key.LCTRL:
             # Clear the left command key held status
             self.leftCommandHeld = False
 
